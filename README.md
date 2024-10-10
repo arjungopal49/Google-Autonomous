@@ -1,7 +1,7 @@
 # Google-Autonomous
 
 You will need to use two terminal windows. One for the frontend server, and another for the backend. On the first terminal, 
-go to the "frontend" folder. Make sure "npm" and "react-scripts" are installed.
+go to the "frontend" folder. Make sure "npm" and "react-scripts" are installed. Also, run "npm install" if new items have been added to packages.json.
 
 
 Start the frontend:
