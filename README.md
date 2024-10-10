@@ -22,8 +22,6 @@ $ venv\Scripts\activate
 
 (venv) $ pip install flask python-dotenv
 
-(venv) $ pip install flask-cors
-
 (venv) $ pip install flask requests
 
 (venv) $ pip install flask-cors
