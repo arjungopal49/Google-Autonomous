@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import logo from './g-a.png';
 import './App.css';
+import TravelTime from './components/TravelTime';
 
 function App() {
   const [currentTime, setCurrentTime] = useState(0);
@@ -29,6 +30,7 @@ function App() {
           Learn React
         </a>
         <p>The current time is {currentTime}.</p>
+        <TravelTime/>
       </header>
     </div>
   );
