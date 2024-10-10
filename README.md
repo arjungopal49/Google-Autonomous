@@ -22,6 +22,8 @@ $ venv\Scripts\activate
 
 (venv) $ pip install flask python-dotenv
 
+(venv) $ pip install flask requests
+
 
 Start the Flask backend at http://localhost:5000:
 
