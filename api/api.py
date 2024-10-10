@@ -6,6 +6,7 @@ from flask_cors import CORS
 app = Flask(__name__)
 CORS(app)
 
+# temoporal API key
 API_KEY = "AIzaSyCzPvBLp1FInh8TivgxTr01GzsJO4S78VM"
 
 @app.route('/time')
