@@ -30,7 +30,7 @@ $ venv\Scripts\activate
 Start the Flask backend at http://localhost:5000:
 
  
-$ flask run
+(venv) $ flask run
 
 
 Now both the frontend and backend are running. The frontend will redirect any requests it does not recognize to the backend. 
