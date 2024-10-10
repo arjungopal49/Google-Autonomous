@@ -24,6 +24,8 @@ $ venv\Scripts\activate
 
 (venv) $ pip install flask requests
 
+(venv) $ pip install flask-cors
+
 
 Start the Flask backend at http://localhost:5000:
 
