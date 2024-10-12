@@ -11,6 +11,7 @@
   "license": "ISC",
   "dependencies": {
     "express": "^4.21.0",
-    "mongodb": "^6.9.0"
+    "mongodb": "^6.9.0",
+    "prompt-sync": "^4.2.0"
   }
 }
