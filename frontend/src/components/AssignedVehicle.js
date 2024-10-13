@@ -4,7 +4,7 @@ import Card from '@mui/material/Card';
 import CardContent from '@mui/material/CardContent';
 import Typography from '@mui/material/Typography';
 import CardMedia from '@mui/material/CardMedia';
-import logo from './Car.png'; // Correct import for local image
+import logo from '../Images/Car.png'; // Correct import for local image
 
 // Mock vehicle data
 const mockVehicle = {
