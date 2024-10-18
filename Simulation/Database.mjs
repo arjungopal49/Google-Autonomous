@@ -71,6 +71,22 @@ async function updateCar(destinationX, destinationY) {
         } else {
           console.log("No documents matched the query. No update was made.");
         }
+
+        // Show that it updated in the database
+        const query = {  _id: new ObjectId(freeCar.id)};
+        const queryResult = await cars.findOne(query);
+        if (queryResult) {
+            // Assign the query results to the freecar object which will be then returned to backend
+            freeCar = {
+              id: queryResult._id.toString(),
+              currentLocation: queryResult.currentLocation,
+              destination: queryResult.Destination ,
+              inUse: queryResult.inUse
+            };
+            console.log(freeCar);
+          }
+
+
       } catch (err) {
         console.error("An error occurred:", err);
       } finally {
@@ -94,11 +110,11 @@ async function main() {
     }
     // dummy value for now
     let freeCar = await query(inUse); // Added trim() to clean up the input
-    console.log(freeCar);
 
-    const destinationX = 5; //dummy values for now, will get these values from backend
-    const destinationY = 300; //dummy values for now, will get these values from backend
+    const destinationX = 5280; //dummy values for now, will get these values from backend
+    const destinationY = 90; //dummy values for now, will get these values from backend
     updateCar(destinationX, destinationY);
+
     console.log(freeCar);
     return freeCar;   
 }
