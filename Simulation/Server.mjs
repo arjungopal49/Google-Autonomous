@@ -1,5 +1,5 @@
 import express from "./node_modules/express/index.js";
-import { query, updateCar } from "./database.mjs";
+import { query, updateCar } from "./Database.mjs";
 
 const app = express();
 const port = 4000;
@@ -15,6 +15,7 @@ app.get('/', (req, res) => {
 app.get('/request-car', async (req, res) => {
   try {
     const freeCar = await query();
+    console.log(freeCar);
     res.status(200).json(freeCar); // Send the car details as JSON response
   } catch (error) {
     res.status(500).json({ error: "Error while fetching car details." });

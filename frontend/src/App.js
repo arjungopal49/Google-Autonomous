@@ -14,6 +14,7 @@ function App() {
       .then(res => res.json())
       .then(data => {
         setCurrentTime(data.time);
+        console.log(data.time);
       });
   }, []);
 

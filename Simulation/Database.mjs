@@ -30,7 +30,7 @@ export async function query() {
     const database = client.db(dbName);
     const cars = database.collection('Autonomous Cars');
     const query = { inUse:"No" };
-    return await cars.findAll(query);
+    return await cars.find(query);
   } catch (err) {
     console.error("An error occurred:", err);
   } finally {

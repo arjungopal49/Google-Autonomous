@@ -11,7 +11,7 @@ API_KEY = "AIzaSyCzPvBLp1FInh8TivgxTr01GzsJO4S78VM"
 
 @app.route('/time')
 def get_current_time():
-    return {'time': time.time()}
+    return {'time':time.time()}
 
 @app.route('/travel-time', methods=['GET'])
 def get_travel_time():
@@ -102,20 +102,28 @@ def get_route():
         'destination': destination,
         'encodedPolyline': polyline
     })
+    
+# @app.route('/request-car')
+# def get_current_car():
+#     return {'car': "True"}
 
 @app.route('/request-car', methods=['GET'])
 def request_car():
     # Making a GET request to the /request-car endpoint of the server.mjs
     try:
         # Replace with the correct port if necessary
-        server_url = "http://localhost:3000/request-car"
+        server_url = "http://localhost:4000/request-car"
 
         # Make the request to the Express server
         response = requests.get(server_url)
+        print(response.json())
+
+
 
         # Check if the request was successful
         if response.status_code == 200:
             free_cars = response.json()
+            
             return jsonify(free_cars)
         else:
             return jsonify({'error': 'Failed to fetch car data from Express server'}), 500
