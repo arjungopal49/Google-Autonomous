@@ -103,11 +103,10 @@ def get_route():
         'encodedPolyline': polyline
     })
     
-# @app.route('/request-car')
-# def get_current_car():
-#     return {'car': "True"}
-
-@app.route('/request-car', methods=['GET'])
+# This function calls the simulation server which then queries the database to return all of the 
+# available (free) cars 
+#
+# this returns an array of free cars 
 def request_car():
     # Making a GET request to the /request-car endpoint of the server.mjs
     try:
@@ -116,16 +115,51 @@ def request_car():
 
         # Make the request to the Express server
         response = requests.get(server_url)
-        print(response.json())
-
-
-
         # Check if the request was successful
         if response.status_code == 200:
             free_cars = response.json()
-            
-            return jsonify(free_cars)
+            print(free_cars)
+            return free_cars
         else:
             return jsonify({'error': 'Failed to fetch car data from Express server'}), 500
     except Exception as e:
         return jsonify({'error': str(e)}), 500
+
+def update_car(carId, destinationX, destinationY):
+    # Making a POST request to the /request-car endpoint of the server.mjs
+    try:
+        # Replace with the correct port if necessary
+        server_url = "http://localhost:4000/update-car"
+
+        # Make the request to the Express server
+        response = requests.post(server_url)
+        # Check if the request was successful
+        if response.status_code == 200:
+            print("good!")
+        else:
+            return jsonify({'error': 'Failed to fetch car data from Express server'}), 500
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    
+update_car('6706fa8bb25d3310bd0e84a7', 1, 2)
+# This is example output of what free cars array could be, in this case there are three free cars
+# [
+#   {
+#     _id: new ObjectId('6706fa8bb25d3310bd0e84a7'),
+#     currentLocation: [ 10, 30 ],
+#     Destination: [ 5280, 90 ],
+#     inUse: 'No'
+#   },
+#   {
+#     _id: new ObjectId('6706fc51b25d3310bd0e84a9'),
+#     currentLocation: [ 10, 20 ],
+#     Destination: [ 5280, 90 ],
+#     inUse: 'No'
+#   },
+#   {
+#     _id: new ObjectId('6706fd51b25d3310bd0e84aa'),
+#     currenLocation: [ 20, 10 ],
+#     Destination: [ 5, 300 ],
+#     inUse: 'No'
+#   }
+# ]

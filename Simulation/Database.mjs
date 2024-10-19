@@ -1,6 +1,5 @@
 import { MongoClient, ServerApiVersion, ObjectId } from 'mongodb';
 
-const prompt = (await import('prompt-sync')).default({ sigint: true });
 const username = encodeURIComponent("eksmith26");
 const password = encodeURIComponent("Grace27$$");  // URL encoded password
 const dbName = "Simu8";
@@ -26,67 +25,50 @@ let car = {
 // return an array of all free cars to backend
 export async function query() {
   try {
-    await client.connect();
+    await client.connect();  // Ensure connection is established
     const database = client.db(dbName);
     const cars = database.collection('Autonomous Cars');
-    const query = { inUse:"No" };
-    return await cars.find(query);
+    const query = { inUse: "No" };
+    
+    // Convert cursor to array so you can return the results
+    const freeCars = await cars.find(query).toArray();
+    console.log(freeCars);
+    return freeCars;
   } catch (err) {
     console.error("An error occurred:", err);
   } finally {
+    // Only close the client when you're done with all operations
     await client.close();
   }
 }
 
 // function to update car location picked by backend for the ride
 export async function updateCar(carId, destinationX, destinationY) {
-    try {
-        await client.connect();
-        const database = client.db(dbName);
-        const cars = database.collection('Autonomous Cars');
-    
-        const filter = { _id: new ObjectId(carId) };
-        const updateDoc = {
-          $set: {
-            "Destination.0": destinationX,
-            "Destination.1": destinationY,
-            "inUse": "Yes",
-          },
-        };
-    
-        const result = await cars.updateOne(filter, updateDoc);
-    
-        if (result.modifiedCount === 1) {
-          console.log("Successfully updated one document.");
-        } else {
-          console.log("No documents matched the query. No update was made.");
-        }
+  try {
+    await client.connect();
+    const database = client.db(dbName);
+    const cars = database.collection('Autonomous Cars');
+    console.log(carId);
+    const filter = { _id: new ObjectId(carId) };
+    const updateDoc = {
+      $set: {
+        "Destination.0": destinationX,
+        "Destination.1": destinationY,
+        "inUse": "Yes",
+      },
+    };
 
-      } catch (err) {
-        console.error("An error occurred:", err);
-      } finally {
-        await client.close();
-      }
+    const result = await cars.updateOne(filter, updateDoc);
+
+    if (result.modifiedCount === 1) {
+      console.log("Successfully updated one document.");
+    } else {
+      console.log("No documents matched the query. No update was made.");
     }
 
-
-// async function main() {
-//     let uservalue = prompt("Do you want to request an autonomous car? (Yes/No): "); // will automatically assume backend wants a free car
-//     let inUse = null;
-//     if (uservalue.trim() == "Yes") {
-//         inUse = "No";
-//     } else {
-//         inUse = "Yes";
-//     }
-//     // dummy value for now
-//     let car = await query(inUse); // Added trim() to clean up the input
-//
-//     const destinationX = 5280; //dummy values for now, will get these values from backend
-//     const destinationY = 90; //dummy values for now, will get these values from backend
-//     updateCar(destinationX, destinationY);
-//
-//     console.log(car);
-//     return car;
-// }
-//
-// main();
+  } catch (err) {
+    console.error("An error occurred:", err);
+  } finally {
+    await client.close();
+  }
+}

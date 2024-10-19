@@ -18,14 +18,6 @@ function App() {
       });
   }, []);
 
-  useEffect(() => {
-    fetch('http://localhost:5000/request-car')
-      .then(res => res.json())
-      .then(data => {
-        console.log('Free car:', data);
-      });
-  }, []);
-
   // Function to handle ride request and fetch assigned vehicle from backend
   const handleRideRequest = async (request) => {
     try {

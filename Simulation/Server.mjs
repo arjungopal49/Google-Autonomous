@@ -15,7 +15,7 @@ app.get('/', (req, res) => {
 app.get('/request-car', async (req, res) => {
   try {
     const freeCar = await query();
-    console.log(freeCar);
+    //console.log(freeCar);
     res.status(200).json(freeCar); // Send the car details as JSON response
   } catch (error) {
     res.status(500).json({ error: "Error while fetching car details." });
