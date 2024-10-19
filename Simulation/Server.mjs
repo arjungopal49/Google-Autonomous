@@ -15,7 +15,6 @@ app.get('/', (req, res) => {
 app.get('/request-car', async (req, res) => {
   try {
     const freeCar = await query();
-    //console.log(freeCar);
     res.status(200).json(freeCar); // Send the car details as JSON response
   } catch (error) {
     res.status(500).json({ error: "Error while fetching car details." });
@@ -27,6 +26,7 @@ app.post('/update-car', async (req, res) => {
   const { carId, destinationX, destinationY } = req.body; // Expecting { destinationX, destinationY } from backend
   try {
     const result = await updateCar(carId, destinationX, destinationY);
+    console.log(result);
     res.status(200); // Send 200 status code if the car location is updated successfully
   } catch (error) {
     res.status(500).json({ error: "Error while updating car." });
@@ -36,3 +36,4 @@ app.post('/update-car', async (req, res) => {
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
+

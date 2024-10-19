@@ -131,8 +131,15 @@ def update_car(carId, destinationX, destinationY):
         # Replace with the correct port if necessary
         server_url = "http://localhost:4000/update-car"
 
-        # Make the request to the Express server
-        response = requests.post(server_url)
+        # Create the data payload
+        body = {
+            'carId': carId,
+            'destinationX': destinationX,
+            'destinationY': destinationY
+        }
+
+        # Send the request to the Express server with the JSON body
+        response = requests.post(server_url, json=body)  # Sending the JSON payload
         # Check if the request was successful
         if response.status_code == 200:
             print("good!")
