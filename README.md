@@ -7,7 +7,7 @@ go to the "frontend" folder. Make sure "npm" and "react-scripts" are installed. 
 Start the frontend:
 
 
-$ npm start (or yarn start)
+$ npm start (or yarn start) within the frontend folder
 
 
 This will take a few seconds and then a browser window will open with the example application from React loaded from http://localhost:3000.
