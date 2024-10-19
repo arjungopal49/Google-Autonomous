@@ -43,3 +43,62 @@ def get_travel_time():
         return jsonify({'error': 'Invalid data received from Google Maps API'}), 500
 
     return jsonify({'origin': origin, 'destination': destination, 'travel_time': travel_time})
+
+@app.route('/route', methods=['GET'])
+def get_route():
+    origin = request.args.get('origin')
+    destination = request.args.get('destination')
+
+    if not origin or not destination:
+        return jsonify({'error': 'Origin and destination are required'}), 400
+
+    url = 'https://routes.googleapis.com/directions/v2:computeRoutes'
+
+    headers = {
+        'Content-Type': 'application/json',
+        'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline'
+    }
+
+    params = {
+        'key': API_KEY
+    }
+
+    body = {
+        "origin": {
+            "location": {
+                "latLng": {
+                    "latitude": float(origin.split(",")[0]),
+                    "longitude": float(origin.split(",")[1])
+                }
+            }
+        },
+        "destination": {
+            "location": {
+                "latLng": {
+                    "latitude": float(destination.split(",")[0]),
+                    "longitude": float(destination.split(",")[1])
+                }
+            }
+        },
+        "travelMode": "DRIVE",
+        "routingPreference": "TRAFFIC_AWARE",
+        "computeAlternativeRoutes": False
+    }
+
+    response = requests.post(url, json=body, headers=headers, params=params)
+
+    if response.status_code != 200:
+        return jsonify({'error': 'Failed to fetch data from Google Routes API'}), 500
+
+    data = response.json()
+
+    try:
+        polyline = data['routes'][0]['polyline']['encodedPolyline']
+    except (KeyError, IndexError):
+        return jsonify({'error': 'Invalid data received from Google Routes API'}), 500
+
+    return jsonify({
+        'origin': origin,
+        'destination': destination,
+        'encodedPolyline': polyline
+    })
