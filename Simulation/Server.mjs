@@ -24,9 +24,10 @@ app.get('/request-car', async (req, res) => {
 // Endpoint to update car's location
 app.post('/update-car', async (req, res) => {
   const { carId, destinationX, destinationY } = req.body; // Expecting { destinationX, destinationY } from backend
+  console.log(carId, destinationX, destinationY);
   try {
     const result = await updateCar(carId, destinationX, destinationY);
-    console.log(result);
+
     res.status(200); // Send 200 status code if the car location is updated successfully
   } catch (error) {
     res.status(500).json({ error: "Error while updating car." });

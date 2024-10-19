@@ -125,30 +125,6 @@ def request_car():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-def update_car(carId, destinationX, destinationY):
-    # Making a POST request to the /request-car endpoint of the server.mjs
-    try:
-        # Replace with the correct port if necessary
-        server_url = "http://localhost:4000/update-car"
-
-        # Create the data payload
-        body = {
-            'carId': carId,
-            'destinationX': destinationX,
-            'destinationY': destinationY
-        }
-
-        # Send the request to the Express server with the JSON body
-        response = requests.post(server_url, json=body)  # Sending the JSON payload
-        # Check if the request was successful
-        if response.status_code == 200:
-            print("good!")
-        else:
-            return jsonify({'error': 'Failed to fetch car data from Express server'}), 500
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-    
-update_car('6706fa8bb25d3310bd0e84a7', 1, 2)
 # This is example output of what free cars array could be, in this case there are three free cars
 # [
 #   {
@@ -170,3 +146,28 @@ update_car('6706fa8bb25d3310bd0e84a7', 1, 2)
 #     inUse: 'No'
 #   }
 # ]
+
+def update_car(carId, destinationX, destinationY):
+    # Making a POST request to the /request-car endpoint of the server.mjs
+    try:
+        # Replace with the correct port if necessary
+        server_url = "http://localhost:4000/update-car"
+
+        body = {
+            "carId": carId,
+            "destinationX": destinationX,
+            "destinationY": destinationY
+        }
+
+        # Make the request to the Express server
+        response = requests.post(server_url, json=body)
+        # Check if the request was successful
+        if response.status_code == 200:
+            print("good!")
+        else:
+            return jsonify({'error': 'Failed to fetch car data from Express server'}), 500
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    
+# Dummy function call to test the request_car function
+update_car('6706fa8bb25d3310bd0e84a7', 100, 200)
