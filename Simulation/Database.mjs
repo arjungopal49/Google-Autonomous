@@ -16,32 +16,21 @@ const client = new MongoClient(uri, {
 });
 
 // Create Car object which will be returned to the backend with the results from the query
-let freeCar = {
+let car = {
     id: null,
     currentLocation: [null, null], // Initialize with null indicating no value set yet
     destination: [null, null],     // Initialize with null as placeholder for future values
     inUse: "No"
 };
 
-async function query(uservalue) {
+// return an array of all free cars to backend
+export async function query() {
   try {
     await client.connect();
     const database = client.db(dbName);
     const cars = database.collection('Autonomous Cars');
-    const query = { inUse: uservalue };
-    const queryResult = await cars.findOne(query);
-    
-    if (queryResult) {
-      // Assign the query results to the freecar object which will be then returned to backend
-      freeCar = {
-        id: queryResult._id.toString(),
-        currentLocation: queryResult.currentLocation,
-        destination: queryResult.Destination ,
-        inUse: queryResult.inUse
-      };
-      return freeCar;
-    }
-    
+    const query = { inUse:"No" };
+    return await cars.findAll(query);
   } catch (err) {
     console.error("An error occurred:", err);
   } finally {
@@ -49,13 +38,14 @@ async function query(uservalue) {
   }
 }
 
-async function updateCar(destinationX, destinationY) {
+// function to update car location picked by backend for the ride
+export async function updateCar(carId, destinationX, destinationY) {
     try {
         await client.connect();
         const database = client.db(dbName);
         const cars = database.collection('Autonomous Cars');
     
-        const filter = { _id: new ObjectId(freeCar.id) };
+        const filter = { _id: new ObjectId(carId) };
         const updateDoc = {
           $set: {
             "Destination.0": destinationX,
@@ -72,21 +62,6 @@ async function updateCar(destinationX, destinationY) {
           console.log("No documents matched the query. No update was made.");
         }
 
-        // Show that it updated in the database
-        const query = {  _id: new ObjectId(freeCar.id)};
-        const queryResult = await cars.findOne(query);
-        if (queryResult) {
-            // Assign the query results to the freecar object which will be then returned to backend
-            freeCar = {
-              id: queryResult._id.toString(),
-              currentLocation: queryResult.currentLocation,
-              destination: queryResult.Destination ,
-              inUse: queryResult.inUse
-            };
-            console.log(freeCar);
-          }
-
-
       } catch (err) {
         console.error("An error occurred:", err);
       } finally {
@@ -95,28 +70,23 @@ async function updateCar(destinationX, destinationY) {
     }
 
 
-    // update x and y destination values to what ever the user requests
-    // change in use to Yes
-
-
-
-async function main() {
-    let uservalue = prompt("Do you want to request an autonomous car? (Yes/No): "); // will automatically assume backend wants a free car
-    let inUse = null;
-    if (uservalue.trim() == "Yes") {
-        inUse = "No";
-    } else {
-        inUse = "Yes";
-    }
-    // dummy value for now
-    let freeCar = await query(inUse); // Added trim() to clean up the input
-
-    const destinationX = 5280; //dummy values for now, will get these values from backend
-    const destinationY = 90; //dummy values for now, will get these values from backend
-    updateCar(destinationX, destinationY);
-
-    console.log(freeCar);
-    return freeCar;   
-}
-
-main();
+// async function main() {
+//     let uservalue = prompt("Do you want to request an autonomous car? (Yes/No): "); // will automatically assume backend wants a free car
+//     let inUse = null;
+//     if (uservalue.trim() == "Yes") {
+//         inUse = "No";
+//     } else {
+//         inUse = "Yes";
+//     }
+//     // dummy value for now
+//     let car = await query(inUse); // Added trim() to clean up the input
+//
+//     const destinationX = 5280; //dummy values for now, will get these values from backend
+//     const destinationY = 90; //dummy values for now, will get these values from backend
+//     updateCar(destinationX, destinationY);
+//
+//     console.log(car);
+//     return car;
+// }
+//
+// main();
