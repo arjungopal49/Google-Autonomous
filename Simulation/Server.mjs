@@ -15,7 +15,6 @@ app.get('/', (req, res) => {
 app.get('/request-car', async (req, res) => {
   try {
     const freeCar = await query();
-    //console.log(freeCar);
     res.status(200).json(freeCar); // Send the car details as JSON response
   } catch (error) {
     res.status(500).json({ error: "Error while fetching car details." });
@@ -36,3 +35,4 @@ app.post('/update-car', async (req, res) => {
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
+

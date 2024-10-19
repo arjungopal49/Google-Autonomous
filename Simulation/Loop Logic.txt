@@ -1,0 +1,9 @@
+have a while loop on the server side that is infinite 
+calls a database function that increments the location of all moving (inuse) cars by one second 
+
+increment car function ->
+- will increment the current x and y location by 1 second 
+- to do this   
+    - get route from google api 
+    - break route down into 1 second intervals?
+    - increment the x and y accourdingly? 
