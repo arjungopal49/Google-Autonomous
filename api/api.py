@@ -125,27 +125,7 @@ def request_car():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
-# This is example output of what free cars array could be, in this case there are three free cars
-# [
-#   {
-#     _id: new ObjectId('6706fa8bb25d3310bd0e84a7'),
-#     currentLocation: [ 10, 30 ],
-#     Destination: [ 5280, 90 ],
-#     inUse: 'No'
-#   },
-#   {
-#     _id: new ObjectId('6706fc51b25d3310bd0e84a9'),
-#     currentLocation: [ 10, 20 ],
-#     Destination: [ 5280, 90 ],
-#     inUse: 'No'
-#   },
-#   {
-#     _id: new ObjectId('6706fd51b25d3310bd0e84aa'),
-#     currenLocation: [ 20, 10 ],
-#     Destination: [ 5, 300 ],
-#     inUse: 'No'
-#   }
-# ]
+
 
 def update_car(carId, destinationX, destinationY):
     # Making a POST request to the /request-car endpoint of the server.mjs
@@ -163,7 +143,7 @@ def update_car(carId, destinationX, destinationY):
         response = requests.post(server_url, json=body)
         # Check if the request was successful
         if response.status_code == 200:
-            print("good!")
+            print("Updates Successfully")
         else:
             return jsonify({'error': 'Failed to fetch car data from Express server'}), 500
     except Exception as e:
