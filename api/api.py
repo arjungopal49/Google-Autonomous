@@ -1,3 +1,4 @@
+import math
 import time
 from flask import Flask, request, jsonify
 import requests
@@ -14,10 +15,18 @@ def get_current_time():
     return {'time':time.time()}
 
 @app.route('/travel-time', methods=['GET'])
-def get_travel_time():
+def get_travel_time_endpoint():
     origin = request.args.get('origin')
     destination = request.args.get('destination')
 
+    travelTime = get_travel_time(origin, destination)
+
+    if travelTime == "error":
+        return jsonify({'error': 'Invalid data received from Google Maps API'}), 500
+    else:
+        return jsonify({'origin': origin, 'destination': destination, 'travel_time': travelTime})
+
+def get_travel_time(origin, destination):
     if not origin or not destination:
         return jsonify({'error': 'Origin and destination are required'}), 400
 
@@ -40,9 +49,9 @@ def get_travel_time():
     try:
         travel_time = data['rows'][0]['elements'][0]['duration']['text']
     except (KeyError, IndexError):
-        return jsonify({'error': 'Invalid data received from Google Maps API'}), 500
+        return "error"
 
-    return jsonify({'origin': origin, 'destination': destination, 'travel_time': travel_time})
+    return travel_time
 
 @app.route('/route', methods=['GET'])
 def get_route():
@@ -102,6 +111,35 @@ def get_route():
         'destination': destination,
         'encodedPolyline': polyline
     })
+
+@app.route('/choose-car', methods=['GET'])
+def choose_car():
+    origin = request.args.get('origin')
+    destination = request.args.get('destination')
+
+    originX = float(origin.split(",")[0])
+    originY = float(origin.split(",")[1])
+
+    destinationX = float(destination.split(",")[0])
+    destinationY = float(destination.split(",")[1])
+
+    free_cars = request_car()
+    closestDistance = math.inf
+    closestCarIndex = -1
+    for i in range (len(free_cars)-1):
+        car = free_cars[i]
+        if car["currentLocation"]:
+            carX = float(car["currentLocation"][0])
+            carY = float(car["currentLocation"][1])
+            distance = math.sqrt((originX-carX)**2 + (originY-carY)**2)
+            if distance < closestDistance:
+                closestDistance = distance
+                closestCarIndex = i
+
+    update_car(free_cars[closestCarIndex]["_id"], destinationX, destinationY)      
+
+    arrivalTime = get_travel_time(str(free_cars[closestCarIndex]["currentLocation"]), origin)
+    return jsonify({'car': free_cars[closestCarIndex], 'arrival-time': arrivalTime})
     
 # This function calls the simulation server which then queries the database to return all of the 
 # available (free) cars 
@@ -118,7 +156,7 @@ def request_car():
         # Check if the request was successful
         if response.status_code == 200:
             free_cars = response.json()
-            print(free_cars)
+            # print(free_cars)
             return free_cars
         else:
             return jsonify({'error': 'Failed to fetch car data from Express server'}), 500
@@ -150,4 +188,4 @@ def update_car(carId, destinationX, destinationY):
         return jsonify({'error': str(e)}), 500
     
 # Dummy function call to test the request_car function
-update_car('6706fa8bb25d3310bd0e84a7', 100, 200)
+# update_car('6706fa8bb25d3310bd0e84a7', 100, 200)
