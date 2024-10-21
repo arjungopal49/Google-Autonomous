@@ -31,7 +31,7 @@ const bull = (
     return (
       <Box sx={{ minWidth: 275, mt: 4 }}>
         {/* Add elevation to the Card */}
-        <Card elevation={3}>
+        <Card elevation={0}>
           <CardContent>
             <Typography gutterBottom sx={{ color: 'text.primary', fontSize: 18 }}>
               Ride Request Form
@@ -43,7 +43,7 @@ const bull = (
             {/* Form fields */}
             <form onSubmit={handleSubmit}>
               <div>
-                <Typography variant="body2" sx={{ mb: -1 }}>Pick-up Location</Typography>
+                <Typography variant="body2" sx={{ mb: 0 }}>Pick-up Location</Typography>
                 <input 
                   type="text" 
                   value={pickupLocation} 
@@ -52,7 +52,7 @@ const bull = (
                 />
               </div>
               <div>
-                <Typography variant="body2" sx={{ mt: 2, mb: -1 }}>Drop-off Location</Typography>
+                <Typography variant="body2" sx={{ mt: 2, mb: 0 }}>Drop-off Location</Typography>
                 <input 
                   type="text" 
                   value={dropoffLocation} 

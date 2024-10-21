@@ -1,18 +1,20 @@
+// src/App.js
 import React, { useState, useEffect } from 'react';
-import logo from './g-a.png';
 import './App.css';
 import TravelTime from './components/TravelTime';
 import RideRequestForm from './components/RideRequestForm';
-import AssignedVehicle from './components/AssignedVehicle';
+import MiniDrawer from './components/Sidebar';
+import MapComponent from './components/MapComponent'; // Import MapComponent
 
 function App() {
   const [currentTime, setCurrentTime] = useState(0);
-  const [vehicle, setVehicle] = useState(null);  // State to store assigned vehicle
+  const [vehicle, setVehicle] = useState(null); // State to store assigned vehicle
+  const [mapPosition, setMapPosition] = useState(null); // Map position state
 
   useEffect(() => {
     fetch('http://localhost:5000/time')
-      .then(res => res.json())
-      .then(data => {
+      .then((res) => res.json())
+      .then((data) => {
         setCurrentTime(data.time);
         console.log(data.time);
       });
@@ -33,22 +35,26 @@ function App() {
     }
   };
 
+  // Update map position when a new location is selected on the map
+  const handleMapClick = (location) => {
+    setMapPosition(location);
+  };
+
   return (
     <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        
-        
+      <div className="app-container"> {/* Flex container */}
+        <MiniDrawer />
+        <div className="map-wrapper"> {/* Map wrapper to contain map and form */}
+          <MapComponent onMapClick={handleMapClick} />
+          <div className="overlay-form">
+            <RideRequestForm onSubmit={handleRideRequest} />
+          </div>
+        </div>
+      </div>
 
-        {/* Ride Request Form */}
-        <RideRequestForm onSubmit={handleRideRequest} />
+      {/* Existing TravelTime Component */}
+      <TravelTime />
 
-        {/* Display Assigned Vehicle */}
-        <AssignedVehicle vehicle={vehicle} />
-
-        {/* Existing TravelTime Component */}
-        <TravelTime />
-      </header>
       <p>The current time is {currentTime}.</p>
     </div>
   );
