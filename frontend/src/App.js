@@ -1,15 +1,17 @@
-// src/App.js
+// App.js
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import TravelTime from './components/TravelTime';
 import RideRequestForm from './components/RideRequestForm';
 import MiniDrawer from './components/Sidebar';
-import MapComponent from './components/MapComponent'; // Import MapComponent
+import MapComponent from './components/MapComponent';
+import AssignedVehicle from './components/AssignedVehicle';
 
 function App() {
   const [currentTime, setCurrentTime] = useState(0);
-  const [vehicle, setVehicle] = useState(null); // State to store assigned vehicle
-  const [mapPosition, setMapPosition] = useState(null); // Map position state
+  const [vehicle, setVehicle] = useState(null);
+  const [arrivalTime, setArrivalTime] = useState(null); // Add state for arrival time
+  const [mapPosition, setMapPosition] = useState(null);
 
   useEffect(() => {
     fetch('http://localhost:5000/time')
@@ -20,22 +22,26 @@ function App() {
       });
   }, []);
 
-  // Function to handle ride request and fetch assigned vehicle from backend
   const handleRideRequest = async (request) => {
     try {
-      const response = await fetch('http://localhost:5000/assign-vehicle', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(request),
+      const response = await fetch(`http://localhost:5000/choose-car?origin=${request.origin}&destination=${request.destination}`, {
+        method: 'GET',
       });
+
       const data = await response.json();
-      setVehicle(data.vehicle); // Store the assigned vehicle
+      if (data.error) {
+        console.error('Error:', data.error);
+      } else {
+        setVehicle(data.car); // Store the assigned vehicle
+        setArrivalTime(data['arrival-time']); // Store the arrival time separately
+        console.log('Assigned Vehicle:', data.car);
+        console.log('Arrival Time:', data['arrival-time']);
+      }
     } catch (error) {
-      console.error('Error assigning vehicle:', error);
+      console.error('Error choosing vehicle:', error);
     }
   };
 
-  // Update map position when a new location is selected on the map
   const handleMapClick = (location) => {
     setMapPosition(location);
   };
@@ -49,12 +55,17 @@ function App() {
           <div className="overlay-form">
             <RideRequestForm onSubmit={handleRideRequest} />
           </div>
+
+          {/* Display assigned vehicle below Ride Request Form */}
+          {vehicle && (
+            <div className="assigned-vehicle-overlay">
+              <AssignedVehicle vehicle={vehicle} arrivalTime={arrivalTime} /> {/* Pass arrivalTime as prop */}
+            </div>
+          )}
         </div>
       </div>
 
-      {/* Existing TravelTime Component */}
       <TravelTime />
-
       <p>The current time is {currentTime}.</p>
     </div>
   );

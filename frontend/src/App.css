@@ -7,6 +7,18 @@
   height: 6vmin;
   pointer-events: none;
 }
+/* Assigned vehicle overlay */
+.assigned-vehicle-overlay {
+  position: absolute;
+  top: 5px; /* This places it directly below the RideRequestForm */
+  right: 10px;
+  background-color: rgb(255, 255, 255);
+  border-radius: 10px;
+  box-shadow: 0px 0px 10px rgba(32, 32, 32, 0.2);
+  z-index: 1000; /* Ensure the overlay stays on top of the map */
+  width: 400px;
+  padding: 20px;
+}
 
 .App-header {
   background-color: #ffffff;

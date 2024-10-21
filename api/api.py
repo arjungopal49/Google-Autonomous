@@ -73,4 +73,5 @@ def choose_car():
         return jsonify("no available cars")
     carsServlet.update_car(free_cars[closestCarIndex]["_id"], destinationX, destinationY)      
     arrivalTime = mapsServlet.get_travel_time(str(free_cars[closestCarIndex]["currentLocation"]).replace(" ", "").replace("'","")[1:-1], origin)
+    print(arrivalTime)
     return jsonify({'car': free_cars[closestCarIndex], 'arrival-time': arrivalTime})

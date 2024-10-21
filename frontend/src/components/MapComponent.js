@@ -8,8 +8,8 @@ const mapContainerStyle = {
 };
 
 const defaultCenter = {
-  lat: 37.7749, // Default latitude (San Francisco, as an example)
-  lng: -122.4194, // Default longitude
+  lat: 43.074902, // Madison Campus
+  lng: -89.400569, // Default longitude
 };
 
 const MapComponent = ({ onMapClick }) => {
@@ -21,7 +21,7 @@ const MapComponent = ({ onMapClick }) => {
       lng: event.latLng.lng(),
     };
     setMapPosition(newLocation);
-    onMapClick(newLocation); // Notify parent component about the new position
+    onMapClick(newLocation); 
   };
 
   return (
