@@ -1,5 +1,5 @@
 import express from "./node_modules/express/index.js";
-import { query, updateCar } from "./Database.mjs";
+import {freeUpCar, query, updateCar} from "./Database.mjs";
 
 const app = express();
 const port = 4000;
@@ -29,6 +29,17 @@ app.post('/update-car', async (req, res) => {
     res.status(200).send(); // Send 200 status code if the car location is updated successfully
   } catch (error) {
     res.status(500).json({ error: "Error while updating car." });
+  }
+});
+
+//Endpoint to free up car after the ride is completed
+app.post('/free-car', async (req, res) => {
+  const { carId } = req.body;
+  try {
+    const result = await freeUpCar(carId);
+      res.status(200).send();// Send 200 status code if the car is freed successfully
+  } catch (error) {
+    res.status(500).json({ error: "Error while freeing up car." });
   }
 });
 
