@@ -1,132 +1,66 @@
 import math
 import time
 from flask import Flask, request, jsonify
-import requests
 from flask_cors import CORS
+import mapsServlet
+import carsServlet
 
 app = Flask(__name__)
 CORS(app)
 
-# temoporal API key
-API_KEY = "AIzaSyCzPvBLp1FInh8TivgxTr01GzsJO4S78VM"
 
 @app.route('/time')
 def get_current_time():
     return {'time':time.time()}
+
 
 @app.route('/travel-time', methods=['GET'])
 def get_travel_time_endpoint():
     origin = request.args.get('origin')
     destination = request.args.get('destination')
 
-    travelTime = get_travel_time(origin, destination)
+    travelTime = mapsServlet.get_travel_time(origin, destination)
 
     if travelTime == "error":
         return jsonify({'error': 'Invalid data received from Google Maps API'}), 500
     else:
         return jsonify({'origin': origin, 'destination': destination, 'travel_time': travelTime})
 
-def get_travel_time(origin, destination):
-    if not origin or not destination:
-        return jsonify({'error': 'Origin and destination are required'}), 400
-
-    url = 'https://maps.googleapis.com/maps/api/distancematrix/json'
-
-    params = {
-        'origins': origin,
-        'destinations': destination,
-        'key': API_KEY,
-        'mode': 'driving'
-    }
-
-    response = requests.get(url, params=params)
-
-    if response.status_code != 200:
-        return jsonify({'error': 'Failed to fetch data from Google Maps API'}), 500
-
-    data = response.json()
-
-    try:
-        travel_time = data['rows'][0]['elements'][0]['duration']['text']
-    except (KeyError, IndexError):
-        return "error"
-
-    return travel_time
 
 @app.route('/route', methods=['GET'])
 def get_route():
     origin = request.args.get('origin')
     destination = request.args.get('destination')
 
-    if not origin or not destination:
-        return jsonify({'error': 'Origin and destination are required'}), 400
+    polyline = mapsServlet.get_route(origin, destination)
 
-    url = 'https://routes.googleapis.com/directions/v2:computeRoutes'
+    if polyline == "error":
+        return jsonify({'error': 'Invalid data received from Google Maps API'}), 500
+    else:
+        return jsonify({'origin': origin, 'destination': destination, 'encodedPolyline': polyline})
 
-    headers = {
-        'Content-Type': 'application/json',
-        'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline'
-    }
-
-    params = {
-        'key': API_KEY
-    }
-
-    body = {
-        "origin": {
-            "location": {
-                "latLng": {
-                    "latitude": float(origin.split(",")[0]),
-                    "longitude": float(origin.split(",")[1])
-                }
-            }
-        },
-        "destination": {
-            "location": {
-                "latLng": {
-                    "latitude": float(destination.split(",")[0]),
-                    "longitude": float(destination.split(",")[1])
-                }
-            }
-        },
-        "travelMode": "DRIVE",
-        "routingPreference": "TRAFFIC_AWARE",
-        "computeAlternativeRoutes": False
-    }
-
-    response = requests.post(url, json=body, headers=headers, params=params)
-
-    if response.status_code != 200:
-        return jsonify({'error': 'Failed to fetch data from Google Routes API'}), 500
-
-    data = response.json()
-
-    try:
-        polyline = data['routes'][0]['polyline']['encodedPolyline']
-    except (KeyError, IndexError):
-        return jsonify({'error': 'Invalid data received from Google Routes API'}), 500
-
-    return jsonify({
-        'origin': origin,
-        'destination': destination,
-        'encodedPolyline': polyline
-    })
 
 @app.route('/choose-car', methods=['GET'])
 def choose_car():
     origin = request.args.get('origin')
     destination = request.args.get('destination')
+    type = request.args.get('type')
 
-    originX = float(origin.split(",")[0])
-    originY = float(origin.split(",")[1])
+    originX, originY = 0,0
+    destinationX, destinationY = 0,0
+    if not type or type=="address":
+        originX, originY = mapsServlet.addressToCoordinates(origin)
+        destinationX, destinationY = mapsServlet.addressToCoordinates(destination)
+    else:
+        originX = float(origin.split(",")[0])
+        originY = float(origin.split(",")[1])
+        destinationX = float(destination.split(",")[0])
+        destinationY = float(destination.split(",")[1])
 
-    destinationX = float(destination.split(",")[0])
-    destinationY = float(destination.split(",")[1])
-
-    free_cars = request_car()
+    free_cars = carsServlet.request_car()
     closestDistance = math.inf
     closestCarIndex = -1
-    for i in range (len(free_cars)-1):
+    for i in range (len(free_cars)):
         car = free_cars[i]
         if car["currentLocation"]:
             carX = float(car["currentLocation"][0])
@@ -136,56 +70,6 @@ def choose_car():
                 closestDistance = distance
                 closestCarIndex = i
 
-    update_car(free_cars[closestCarIndex]["_id"], destinationX, destinationY)      
-
-    arrivalTime = get_travel_time(str(free_cars[closestCarIndex]["currentLocation"]), origin)
+    carsServlet.update_car(free_cars[closestCarIndex]["_id"], destinationX, destinationY)      
+    arrivalTime = mapsServlet.get_travel_time(str(free_cars[closestCarIndex]["currentLocation"]).replace(" ", "")[1:-1], origin)
     return jsonify({'car': free_cars[closestCarIndex], 'arrival-time': arrivalTime})
-    
-# This function calls the simulation server which then queries the database to return all of the 
-# available (free) cars 
-#
-# this returns an array of free cars 
-def request_car():
-    # Making a GET request to the /request-car endpoint of the server.mjs
-    try:
-        # Replace with the correct port if necessary
-        server_url = "http://localhost:4000/request-car"
-
-        # Make the request to the Express server
-        response = requests.get(server_url)
-        # Check if the request was successful
-        if response.status_code == 200:
-            free_cars = response.json()
-            # print(free_cars)
-            return free_cars
-        else:
-            return jsonify({'error': 'Failed to fetch car data from Express server'}), 500
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-
-
-
-def update_car(carId, destinationX, destinationY):
-    # Making a POST request to the /request-car endpoint of the server.mjs
-    try:
-        # Replace with the correct port if necessary
-        server_url = "http://localhost:4000/update-car"
-
-        body = {
-            "carId": carId,
-            "destinationX": destinationX,
-            "destinationY": destinationY
-        }
-
-        # Make the request to the Express server
-        response = requests.post(server_url, json=body)
-        # Check if the request was successful
-        if response.status_code == 200:
-            print("Updates Successfully")
-        else:
-            return jsonify({'error': 'Failed to fetch car data from Express server'}), 500
-    except Exception as e:
-        return jsonify({'error': str(e)}), 500
-    
-# Dummy function call to test the request_car function
-# update_car('6706fa8bb25d3310bd0e84a7', 100, 200)
