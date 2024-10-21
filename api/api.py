@@ -75,30 +75,12 @@ def choose_car():
         return jsonify("no available cars")
     carsServlet.update_car(free_cars[closestCarIndex]["_id"], destinationX, destinationY)      
     arrivalTime = mapsServlet.get_travel_time(str(free_cars[closestCarIndex]["currentLocation"]).replace(" ", "").replace("'","")[1:-1], origin)
-    print(arrivalTime)
     return jsonify({'car': free_cars[closestCarIndex], 'arrival-time': arrivalTime})
 
-
-# dummy function to test the freeUpCar endpoint
-# def freeUp_Car(carId):
-#     # making a POST request to the /free-car endpoint of the server.mjs
-#     try:
-#         # Replace with the correct port if necessary
-#         server_url = "http://localhost:4000/free-car"
-#
-#         body = {
-#             "carId": carId
-#         }
-#
-#         # Make the request to the Express server
-#         response = requests.post(server_url, json=body)
-#         # Check if the request was successful
-#         if response.status_code == 200:
-#             print("Car is now free")
-#         else:
-#             return jsonify({'error': 'Failed to fetch car data from Express server'}), 500
-#     except Exception as e:
-#         return jsonify({'error': str(e)}), 500
-#
-#
-# freeUp_Car("6716a232c74b623f03d4b134")
+@app.route('/free-all-cars', methods=['GET'])
+def freeAllCars():
+    cars = carsServlet.get_all_cars()
+    for car in cars:
+        if car["inUse"] != "No":
+            carsServlet.freeUp_Car(car["_id"])
+    return jsonify("All cars freed")
