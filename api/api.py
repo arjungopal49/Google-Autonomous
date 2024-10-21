@@ -69,7 +69,8 @@ def choose_car():
             if distance < closestDistance:
                 closestDistance = distance
                 closestCarIndex = i
-
+    if closestCarIndex == -1:
+        return jsonify("no available cars")
     carsServlet.update_car(free_cars[closestCarIndex]["_id"], destinationX, destinationY)      
-    arrivalTime = mapsServlet.get_travel_time(str(free_cars[closestCarIndex]["currentLocation"]).replace(" ", "")[1:-1], origin)
+    arrivalTime = mapsServlet.get_travel_time(str(free_cars[closestCarIndex]["currentLocation"]).replace(" ", "").replace("'","")[1:-1], origin)
     return jsonify({'car': free_cars[closestCarIndex], 'arrival-time': arrivalTime})
