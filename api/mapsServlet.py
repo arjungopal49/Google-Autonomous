@@ -35,57 +35,55 @@ def get_travel_time(origin, destination):
 
 
 def get_route(origin, destination):
-    if not origin or not destination:
-        return jsonify({'error': 'Origin and destination are required'}), 400
-
-    url = 'https://routes.googleapis.com/directions/v2:computeRoutes'
-
-    headers = {
-        'Content-Type': 'application/json',
-        'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline'
-    }
-
-    params = {
-        'key': API_KEY
-    }
-
-    body = {
-        "origin": {
-            "location": {
-                "latLng": {
-                    "latitude": float(origin.split(",")[0]),
-                    "longitude": float(origin.split(",")[1])
-                }
-            }
-        },
-        "destination": {
-            "location": {
-                "latLng": {
-                    "latitude": float(destination.split(",")[0]),
-                    "longitude": float(destination.split(",")[1])
-                }
-            }
-        },
-        "travelMode": "DRIVE",
-        "routingPreference": "TRAFFIC_AWARE",
-        "computeAlternativeRoutes": False
-    }
-
-    response = requests.post(url, json=body, headers=headers, params=params)
-
-    if response.status_code != 200:
+    if not origin or not destination or origin == 'undefined' or destination == 'undefined':
         return "error"
-
-    data = response.json()
 
     try:
-        polyline = data['routes'][0]['polyline']['encodedPolyline']
-    except (KeyError, IndexError):
+        # Parse the coordinates
+        origin_lat, origin_lng = map(float, origin.split(','))
+        dest_lat, dest_lng = map(float, destination.split(','))
+
+        url = 'https://routes.googleapis.com/directions/v2:computeRoutes'
+
+        headers = {
+            'Content-Type': 'application/json',
+            'X-Goog-Api-Key': API_KEY,
+            'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline'
+        }
+
+        body = {
+            "origin": {
+                "location": {
+                    "latLng": {
+                        "latitude": origin_lat,
+                        "longitude": origin_lng
+                    }
+                }
+            },
+            "destination": {
+                "location": {
+                    "latLng": {
+                        "latitude": dest_lat,
+                        "longitude": dest_lng
+                    }
+                }
+            },
+            "travelMode": "DRIVE",
+            "routingPreference": "TRAFFIC_AWARE",
+            "computeAlternativeRoutes": False
+        }
+
+        response = requests.post(url, json=body, headers=headers)
+
+        if response.status_code != 200:
+            return "error"
+
+        data = response.json()
+        return data['routes'][0]['polyline']['encodedPolyline']
+
+    except Exception as e:
+        print(f"Error in get_route: {str(e)}")
         return "error"
-
-    return polyline
-
-
 
 def addressToCoordinates(address):
     base_url = "https://maps.googleapis.com/maps/api/geocode/json"

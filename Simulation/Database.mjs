@@ -100,3 +100,71 @@ export async function freeUpCar(carId) {
         await client.close();
     }
 }
+
+
+// Infite loop function that gets the cars in use every second and gets
+// the polyline for each car from hashmap or api/backend and class helper function to find the locatiom
+//of each car in the next second and update the location in the database
+export async function updateCarLocation() {
+    try {
+        await client.connect();
+        const database = client.db(dbName);
+        const cars = database.collection('Autonomous Cars');
+        const query = {inUse: "Yes"};
+        let carsInUse = await cars.find(query).toArray();
+        console.log(carsInUse);
+        // Loop through each car in use
+        for (let car of carsInUse) {
+            let carId = car._id;
+            const originString = `${car.currentLocation[0]},${car.currentLocation[1]}`;
+            const destinationString = `${car.Destination[0]},${car.Destination[1]}`;
+            // get the polyline from backend or hashmap
+            let polyline = fetchPolylineFromBackend(originString, destinationString);
+            console.log(polyline);
+            // let nextLocation = getNextLocation(polyline);
+            // console.log(nextLocation);
+
+            // const filter = {_id: new ObjectId(carId)};
+            // const updateDoc = {
+            //     $set: {
+            //         "CurrentLocation.0": nextLocation[0],
+            //         "CurrentLocation.1": nextLocation[1],
+            //     },
+            // };
+            //
+            // const result = await cars.updateOne(filter, updateDoc);
+            //
+            // if (result.modifiedCount === 1) {
+            //     console.log("Successfully updated one document.");
+            // } else {
+            //     console.log("No documents matched the query. No update was made.");
+            // }
+        }
+    } catch (err) {
+        console.error("An error occurred:", err);
+        // } finally {
+        //     await client.close();
+        // }
+    }
+}
+
+// Helper function to fetch the polyline from the backend
+async function fetchPolylineFromBackend(origin, destination) {
+    try {
+        const response = await fetch(`http://localhost:5000/route?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}`);
+        console.log(response);
+        if (!response.ok) {
+            console.error("Failed to fetch polyline from backend");
+            return null;
+        }
+
+        const data = await response.json();
+        return data.encodedPolyline;
+    } catch (err) {
+        console.error("Error fetching polyline:", err);
+        return null;
+    }
+}
+
+// call the updateCarLocation function every second
+setInterval(updateCarLocation);

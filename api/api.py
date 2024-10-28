@@ -34,12 +34,38 @@ def get_route():
     origin = request.args.get('origin')
     destination = request.args.get('destination')
 
-    polyline = mapsServlet.get_route(origin, destination)
+    # Check for undefined or missing parameters
+    if not origin or not destination or destination == 'undefined' or origin == 'undefined':
+        return jsonify({
+            'error': 'Origin and destination are required',
+            'received': {
+                'origin': origin,
+                'destination': destination
+            }
+        }), 400
 
-    if polyline == "error":
-        return jsonify({'error': 'Invalid data received from Google Maps API'}), 500
-    else:
-        return jsonify({'origin': origin, 'destination': destination, 'encodedPolyline': polyline})
+    try:
+        polyline = mapsServlet.get_route(origin, destination)
+
+        if polyline == "error":
+            return jsonify({
+                'error': 'Invalid data received from Google Maps API'
+            }), 500
+
+        return jsonify({
+            'status': 'success',
+            'origin': origin,
+            'destination': destination,
+            'encodedPolyline': polyline
+        })
+
+    except Exception as e:
+        print(f"Error in route endpoint: {str(e)}")
+        return jsonify({
+            'error': 'Server error',
+            'details': str(e)
+        }), 500
+
 
 
 @app.route('/choose-car', methods=['GET'])
