@@ -1,5 +1,5 @@
 import express from "./node_modules/express/index.js";
-import {freeUpCar, query, updateCar} from "./Database.mjs";
+import {freeUpCar, getAllCars, query, updateCar} from "./Database.mjs";
 
 const app = express();
 const port = 4000;
@@ -29,6 +29,16 @@ app.post('/update-car', async (req, res) => {
     res.status(200).send(); // Send 200 status code if the car location is updated successfully
   } catch (error) {
     res.status(500).json({ error: "Error while updating car." });
+  }
+});
+
+// Endpoint to get the list of all cars (free and used)
+app.get('/all-cars', async (req, res) => {
+  try {
+    const cars = await getAllCars();
+    res.status(200).json(cars); // Send the car details as JSON response
+  } catch (error) {
+    res.status(500).json({ error: "Error while fetching car details." });
   }
 });
 

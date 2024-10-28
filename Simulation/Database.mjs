@@ -73,6 +73,22 @@ export async function updateCar(carId, destinationX, destinationY) {
     }
 }
 
+// return an array of all cars (free and used)
+export async function getAllCars() {
+    try {
+        await client.connect();  // Ensure connection is established
+        const database = client.db(dbName);
+        const cars = database.collection('Autonomous Cars');
+        const allCars = await cars.find({}).toArray();
+        return allCars;
+    } catch (err) {
+        console.error("An error occurred:", err);
+    } finally {
+        // Only close the client when you're done with all operations
+        await client.close();
+    }
+}
+
 // function to free up car after the ride is completed. takes in carId and change the inuse status to No
 export async function freeUpCar(carId) {
     try {
