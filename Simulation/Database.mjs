@@ -1,8 +1,12 @@
 import {MongoClient, ServerApiVersion, ObjectId} from 'mongodb';
+import polylineCodec from '@googlemaps/polyline-codec';
+const { decode } = polylineCodec;
+
 
 const username = encodeURIComponent("eksmith26");
 const password = encodeURIComponent("Grace27$$");  // URL encoded password
 const dbName = "Simu8";
+const API_KEY = "AIzaSyCzPvBLp1FInh8TivgxTr01GzsJO4S78VM";
 
 const uri = `mongodb+srv://${username}:${password}@autosimulate.7qsly.mongodb.net/?retryWrites=true&w=majority&appName=AutoSimulate`;
 
@@ -128,15 +132,18 @@ export async function updateCarLocation() {
         const cars = database.collection('Autonomous Cars');
         const query = {inUse: "Yes"};
         let carsInUse = await cars.find(query).toArray();
-        console.log(carsInUse);
         // Loop through each car in use
         for (let car of carsInUse) {
             let carId = car._id;
             const originString = `${car.currentLocation[0]},${car.currentLocation[1]}`;
             const destinationString = `${car.Destination[0]},${car.Destination[1]}`;
-            // get the polyline from backend or hashmap
-            let polyline = fetchPolylineFromBackend(originString, destinationString);
-            console.log(polyline);
+            // get the polyline from google maps api
+            // This is a array of coordinates formated as a 2D array 
+            let routeInfo = await fetchPolyline(originString, destinationString);
+            let coordinates = routeInfo[0];
+            let distance = routeInfo[1]; // total distance in meters
+            let time = routeInfo[2]; // total route time in seconds 
+
             // let nextLocation = getNextLocation(polyline);
             // console.log(nextLocation);
 
@@ -164,23 +171,71 @@ export async function updateCarLocation() {
     }
 }
 
-// Helper function to fetch the polyline from the backend
-async function fetchPolylineFromBackend(origin, destination) {
-    try {
-        const response = await fetch(`http://localhost:5000/route?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}`);
-        console.log(response);
-        if (!response.ok) {
-            console.error("Failed to fetch polyline from backend");
-            return null;
-        }
+// Helper function to fetch the polyline from Google Maps API
+async function fetchPolyline(origin, destination) {
+  if (!origin || !destination || origin === 'undefined' || destination === 'undefined') {
+    return "error";
+  }
 
-        const data = await response.json();
-        return data.encodedPolyline;
-    } catch (err) {
-        console.error("Error fetching polyline:", err);
-        return null;
+  try {
+    // Parse the coordinates
+    const [originLat, originLng] = origin.split(',').map(Number);
+    const [destLat, destLng] = destination.split(',').map(Number);
+
+    const url = 'https://routes.googleapis.com/directions/v2:computeRoutes';
+
+    const headers = {
+        'Content-Type': 'application/json',
+        'X-Goog-Api-Key': API_KEY,  
+        'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline'
+    };
+
+    const body = JSON.stringify({
+        origin: {
+            location: {
+                latLng: {
+                    latitude: originLat,
+                    longitude: originLng
+                }
+            }
+        },
+        destination: {
+            location: {
+                latLng: {
+                    latitude: destLat,
+                    longitude: destLng
+                }
+            }
+        },
+        travelMode: "DRIVE",
+        routingPreference: "TRAFFIC_AWARE",
+        computeAlternativeRoutes: false
+    });
+
+    const response = await fetch(url, {
+        method: 'POST',
+        headers: headers,
+        body: body
+    });
+
+    if (!response.ok) {
+        return "error";
     }
+
+    const data = await response.json();
+    
+    const encodedPolyline = data.routes[0].polyline.encodedPolyline;
+    const distance = data.routes[0].distanceMeters; // total distance in meters 
+    const time = parseInt(data.routes[0].duration, 10); // base 10
+    const decodedPolyline = decode(encodedPolyline);
+    return [ decodedPolyline, time, distance ];
+
+  } catch (error) {
+    console.error(`Error in getRoute: ${error}`);
+    return "error";
+  }
 }
+
 
 // call the updateCarLocation function every second
 setInterval(updateCarLocation);
