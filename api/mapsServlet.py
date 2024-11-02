@@ -85,6 +85,45 @@ def get_route(origin, destination):
         print(f"Error in get_route: {str(e)}")
         return "error"
 
+
+def getRouteMatrix(carLocations, pickupLocation):
+    url = "https://routes.googleapis.com/distanceMatrix/v2:computeRouteMatrix"
+    headers = {
+        "Content-Type": "application/json",
+        'X-Goog-Api-Key': API_KEY,
+        'X-Goog-FieldMask': 'originIndex,destinationIndex,duration,distanceMeters,status,condition'
+    }
+
+    body = {
+        "origins": [{"waypoint": {"location": {"latLng": {"latitude": loc[0], "longitude": loc[1]}}}} for loc in carLocations],
+        "destinations": [{"waypoint": {"location": {"latLng": {"latitude": pickupLocation[0], "longitude": pickupLocation[1]}}}}],
+        "travelMode": "DRIVE"
+    }
+
+    try:
+        response = requests.post(url, headers=headers, json=body)
+        response.raise_for_status()
+        data = response.json()
+    except requests.exceptions.RequestException as e:
+        print(f"An error occurred while fetching the route matrix: {e}")
+        return None
+    
+    results = []
+    for element in data:
+        index = element['originIndex']
+        duration = element['duration']
+        distance = element['distanceMeters']
+        results.append({
+            'carIndex': index,
+            'origin': carLocations[index],
+            'pickup_location': pickupLocation,
+            'duration': duration,
+            'distance': distance
+        })
+
+    return results
+
+
 def addressToCoordinates(address):
     base_url = "https://maps.googleapis.com/maps/api/geocode/json"
     params = {

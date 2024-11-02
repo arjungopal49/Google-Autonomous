@@ -1,7 +1,5 @@
-import math
 import time
 
-import requests
 from flask import Flask, request, jsonify
 from flask_cors import CORS
 import mapsServlet
@@ -66,8 +64,15 @@ def get_route():
             'details': str(e)
         }), 500
 
-
-
+# params:
+# origin - current location/pick up location for the user
+# destination - destination location for the user
+# type - address or coordinate
+#
+# return:
+# car - the car object which is chosen for the user
+# arrival-time - the estimated arrival time for the car to arrive at the pickup location
+# route - the polyline route from the car to the pickup location
 @app.route('/choose-car', methods=['GET'])
 def choose_car():
     origin = request.args.get('origin')
@@ -86,27 +91,49 @@ def choose_car():
         destinationY = float(destination.split(",")[1])
 
     free_cars = carsServlet.request_car()
-    closestDistance = math.inf
-    closestCarIndex = -1
-    for i in range (len(free_cars)):
-        car = free_cars[i]
-        if car["currentLocation"]:
-            carX = float(car["currentLocation"][0])
-            carY = float(car["currentLocation"][1])
-            distance = math.sqrt((originX-carX)**2 + (originY-carY)**2)
-            if distance < closestDistance:
-                closestDistance = distance
-                closestCarIndex = i
-    if closestCarIndex == -1:
+    if len(free_cars) == 0:
         return jsonify("no available cars")
-    carsServlet.update_car(free_cars[closestCarIndex]["_id"], destinationX, destinationY)      
-    arrivalTime = mapsServlet.get_travel_time(str(free_cars[closestCarIndex]["currentLocation"]).replace(" ", "").replace("'","")[1:-1], origin)
-    return jsonify({'car': free_cars[closestCarIndex], 'arrival-time': arrivalTime})
 
-@app.route('/free-all-cars', methods=['GET'])
+    carLocations = []
+    for car in free_cars:
+        carX = float(car["currentLocation"][0])
+        carY = float(car["currentLocation"][1])
+        carLocations.append([carX, carY])
+    pickupLocation = [originX, originY]
+    results = mapsServlet.getRouteMatrix(carLocations, pickupLocation)
+    closestCarIndex = min(results, key=lambda x: int(x['duration'].strip('s')))['carIndex']
+
+    carsServlet.update_car(free_cars[closestCarIndex]["_id"], destinationX, destinationY)
+
+    arrivalTime = mapsServlet.get_travel_time(str(free_cars[closestCarIndex]["currentLocation"]).replace(" ", "").replace("'","")[1:-1], origin)
+    polyline = mapsServlet.get_route(str(free_cars[closestCarIndex]["currentLocation"]).replace(" ", "").replace("'","")[1:-1], origin)
+
+    return jsonify({'car': free_cars[closestCarIndex], 'arrival-time': arrivalTime, 'route': polyline})
+
+
+@app.route('/free-all-cars', methods=['POST'])
 def freeAllCars():
     cars = carsServlet.get_all_cars()
     for car in cars:
         if car["inUse"] != "No":
             carsServlet.freeUp_Car(car["_id"])
     return jsonify("All cars freed")
+
+
+@app.route('/get-all-cars', methods=['GET'])
+def getAllCars():
+    cars = carsServlet.get_all_cars()
+    return jsonify(cars)
+
+
+@app.route('/get-car', methods=['GET'])
+def getCar():
+    carId = request.args.get('id')
+    cars = carsServlet.get_all_cars()
+    
+    car = next((car for car in cars if car['_id'] == carId), None)
+    if car:
+        return jsonify(car), 200
+    else:
+        return jsonify({"error": "Car not found"}), 404
+    
