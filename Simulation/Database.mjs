@@ -103,7 +103,7 @@ export async function freeUpCar(carId) {
         const filter = {_id: new ObjectId(carId)};
         const updateDoc = {
             $set: {
-                "inUse": "No"
+                inUse: "No"
             },
         };
 
@@ -121,55 +121,88 @@ export async function freeUpCar(carId) {
     }
 }
 
+// Cache for storing each car's route coordinates
+const routeCache = {};
 
-// Infite loop function that gets the cars in use every second and gets
-// the polyline for each car from hashmap or api/backend and class helper function to find the locatiom
-//of each car in the next second and update the location in the database
-export async function updateCarLocation() {
-    try {
-        await client.connect();
-        const database = client.db(dbName);
-        const cars = database.collection('Autonomous Cars');
-        const query = {inUse: "Yes"};
-        let carsInUse = await cars.find(query).toArray();
-        // Loop through each car in use
-        for (let car of carsInUse) {
-            let carId = car._id;
-            const originString = `${car.currentLocation[0]},${car.currentLocation[1]}`;
-            const destinationString = `${car.Destination[0]},${car.Destination[1]}`;
-            // get the polyline from google maps api
-            // This is a array of coordinates formated as a 2D array 
-            let routeInfo = await fetchPolyline(originString, destinationString);
-            let coordinates = routeInfo[0];
-            let distance = routeInfo[1]; // total distance in meters
-            let time = routeInfo[2]; // total route time in seconds 
+// Tolerance for destination proximity check
+const tolerance = 0.0001;
 
-            // let nextLocation = getNextLocation(polyline);
-            // console.log(nextLocation);
+async function updateCarLocation() {
+    const database = client.db(dbName);
+    const carsCollection = database.collection('Autonomous Cars');
 
-            // const filter = {_id: new ObjectId(carId)};
-            // const updateDoc = {
-            //     $set: {
-            //         "CurrentLocation.0": nextLocation[0],
-            //         "CurrentLocation.1": nextLocation[1],
-            //     },
-            // };
-            //
-            // const result = await cars.updateOne(filter, updateDoc);
-            //
-            // if (result.modifiedCount === 1) {
-            //     console.log("Successfully updated one document.");
-            // } else {
-            //     console.log("No documents matched the query. No update was made.");
-            // }
+    const query = { inUse: "Yes" };
+    const carsInUse = await carsCollection.find(query).toArray();
+
+    // Track active cars and interval IDs
+    let activeCars = carsInUse.length;
+    const intervalIds = [];
+
+    console.log(`Starting location update for ${activeCars} cars in use.`);
+
+    // Loop through each car in use
+    for (let car of carsInUse) {
+        let carId = car._id;
+
+        // Check if the route is already cached
+        if (!routeCache[carId]) {
+            console.log(`Fetching route for car ${carId}`);
+            let routeInfo = await fetchPolyline(`${car.currentLocation[0]},${car.currentLocation[1]}`, `${car.Destination[0]},${car.Destination[1]}`);
+            routeCache[carId] = routeInfo[0]; // Store only the coordinates array
         }
-    } catch (err) {
-        console.error("An error occurred:", err);
-        // } finally {
-        //     await client.close();
-        // }
+
+        const coordinates = routeCache[carId];
+        let coordinateIndex = 0;
+
+        // Set up an interval for each car
+        const intervalId = setInterval(async () => {
+            if (coordinateIndex >= coordinates.length) {
+                console.log(`Car ${carId} has reached the final coordinate.`);
+                clearInterval(intervalId);
+                activeCars--;
+
+                await carsCollection.updateOne(
+                    { _id: carId },
+                    { $set: { inUse: "No" } }
+                );
+                
+                delete routeCache[carId];
+
+                if (activeCars === 0) {
+                    console.log("All cars have reached their destinations. Closing database connection.");
+                    await client.close();
+                }
+                return;
+            }
+
+            const [newLat, newLng] = coordinates[coordinateIndex];
+            car.currentLocation = [newLat, newLng];
+            console.log(`Car ${carId} position: (${newLat.toFixed(5)}, ${newLng.toFixed(5)})`);
+
+            await carsCollection.updateOne(
+                { _id: carId },
+                { $set: { currentLocation: car.currentLocation } }
+            );
+            
+            coordinateIndex += 1;
+        }, 1000);
+
+        intervalIds.push(intervalId);
     }
 }
+
+// Connect to the database once, then start updating car locations
+(async () => {
+    try {
+        await client.connect();
+        console.log("Connected to the database.");
+        await updateCarLocation();
+    } catch (err) {
+        console.error("An error occurred:", err);
+        await client.close();
+    }
+})();
+
 
 // Helper function to fetch the polyline from Google Maps API
 async function fetchPolyline(origin, destination) {
@@ -237,5 +270,3 @@ async function fetchPolyline(origin, destination) {
 }
 
 
-// call the updateCarLocation function every second
-setInterval(updateCarLocation);
