@@ -2,8 +2,7 @@ import requests
 from flask import jsonify
 
 # temoporal API key
-API_KEY = "AIzaSyCzPvBLp1FInh8TivgxTr01GzsJO4S78VM"
-
+API_KEY = "AIzaSyCDNOcShPLnjKVBPl5CGFWoGV6IzW3QDy8"
 
 def get_travel_time(origin, destination):
     if not origin or not destination:

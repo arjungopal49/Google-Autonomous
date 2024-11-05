@@ -25,7 +25,7 @@ const MapComponent = ({ onMapClick }) => {
   };
 
   return (
-    <LoadScript googleMapsApiKey="AIzaSyCzPvBLp1FInh8TivgxTr01GzsJO4S78VM">
+    <LoadScript googleMapsApiKey="AIzaSyCDNOcShPLnjKVBPl5CGFWoGV6IzW3QDy8">
       <GoogleMap
         mapContainerStyle={mapContainerStyle}
         center={mapPosition}
