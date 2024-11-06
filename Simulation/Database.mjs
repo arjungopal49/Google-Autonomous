@@ -195,7 +195,7 @@ async function updateCarLocation() {
 
                 if (activeCars === 0) {
                     console.log("All cars have reached their destinations. Closing database connection.");
-                    await client.close(); // remove this to cause infinite loop
+                    //await client.close(); // remove this to cause infinite loop
                 }
                 return;
             }
@@ -207,7 +207,7 @@ async function updateCarLocation() {
             totalDistanceCovered += speed * intervalTime;
             const [newLat, newLng] = moveCarProgressively(start, end, totalDistanceCovered, segmentDistance);
             car.currentLocation = [newLat, newLng];
-            console.log(`Car ${carId} position: (${newLat.toFixed(8)}, ${newLng.toFixed(8)})`);
+            console.log(`Car ${carId} position: (${newLat}, ${newLng})`);
 
             // Update car's location in the database
             await carsCollection.updateOne(
