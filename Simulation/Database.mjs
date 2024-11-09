@@ -6,7 +6,7 @@ const { decode } = polylineCodec;
 const username = encodeURIComponent("eksmith26");
 const password = encodeURIComponent("Grace27$$");  // URL encoded password
 const dbName = "Simu8";
-const API_KEY = "AIzaSyCzPvBLp1FInh8TivgxTr01GzsJO4S78VM";
+const API_KEY = "AIzaSyCDNOcShPLnjKVBPl5CGFWoGV6IzW3QDy8";
 
 const uri = `mongodb+srv://${username}:${password}@autosimulate.7qsly.mongodb.net/?retryWrites=true&w=majority&appName=AutoSimulate`;
 
@@ -54,6 +54,10 @@ export async function updateCar(carId, destinationX, destinationY) {
         const cars = database.collection('Autonomous Cars');
         console.log(carId);
         const filter = {_id: new ObjectId(carId)};
+        destinationX = Number(destinationX)
+        destinationY = Number(destinationY)
+        destinationX = Number(destinationX.toFixed(7));
+        destinationY = Number(destinationY.toFixed(7));
         const updateDoc = {
             $set: {
                 "Destination.0": destinationX,

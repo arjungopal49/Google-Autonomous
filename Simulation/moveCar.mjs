@@ -27,6 +27,7 @@ let car = {
     inUse: "No"
 };
 
+
 // Function to calculate distance between two coordinates using the haversine formula
 function haversineDistance([x1, y1], [x2, y2]) {
     const R = 6371000; // Radius of Earth in meters
@@ -44,7 +45,8 @@ function haversineDistance([x1, y1], [x2, y2]) {
 function interpolate([x1, y1], [x2, y2], ratio) {
     const x = x1 + (x2 - x1) * ratio;
     const y = y1 + (y2 - y1) * ratio;
-    return [x, y];
+    return [Number(x.toFixed(7)), Number(y.toFixed(7))];
+    
 }
 
 // Cache for storing each car's route coordinates
@@ -56,7 +58,8 @@ function moveCarProgressively(start, end, distanceCovered, segmentDistance) {
     return interpolate(start, end, Math.min(ratio, 1)); // Ensure ratio does not exceed 1
 }
 
-// Updated updateCarLocation function without internal intervals
+const activeCarIntervals = new Set(); // Track cars with active intervals
+
 async function updateCarLocation() {
     const database = client.db(dbName);
     const carsCollection = database.collection('Autonomous Cars');
@@ -64,89 +67,79 @@ async function updateCarLocation() {
     const query = { inUse: "Yes" };
     const carsInUse = await carsCollection.find(query).toArray();
 
-    let activeCars = carsInUse.length;
-    console.log(`Starting location update for ${activeCars} cars in use.`);
-
     for (let car of carsInUse) {
-        let carId = car._id;
+        let carId = car._id.toString(); // Ensure consistent ID tracking
+
+        // Skip if the car already has an active interval
+        if (activeCarIntervals.has(carId)) continue;
+
+        console.log(`Starting location updates for car ${carId}`);
+        activeCarIntervals.add(carId); // Mark car as being actively updated
 
         // Fetch route if not cached
         if (!routeCache[carId]) {
             console.log(`Fetching route for car ${carId}`);
             let routeInfo = await fetchPolyline(`${car.currentLocation[0]},${car.currentLocation[1]}`, `${car.Destination[0]},${car.Destination[1]}`);
             routeCache[carId] = {
-                coordinates: routeInfo[0], // Store the coordinates array
-                speed: routeInfo[1] // Store the speed (you can modify this value as needed)
+                coordinates: routeInfo[0],
+                speed: routeInfo[1]
             };
         }
 
         const coordinates = routeCache[carId].coordinates;
-        let currentSegmentIndex = car.currentSegmentIndex || 0; // Track current segment for each car
-        let totalDistanceCovered = car.totalDistanceCovered || 0; // Track distance covered in segment
+        let currentSegmentIndex = 0;
+        let totalDistanceCovered = 0;
         const speed = routeCache[carId].speed; // Car speed in meters per second
-        const intervalTime = 1; // Update interval in seconds
 
-        if (currentSegmentIndex >= coordinates.length - 1) {
-            console.log(`Car ${carId} has reached the final coordinate.`);
-            activeCars--;
+        const intervalId = setInterval(async () => {
+            if (currentSegmentIndex >= coordinates.length - 1) {
+                console.log(`Car ${carId} has reached its destination.`);
+                clearInterval(intervalId);
+                activeCarIntervals.delete(carId); // Remove car from active set
+                delete routeCache[carId];
+
+                await carsCollection.updateOne(
+                    { _id: car._id },
+                    { $set: { inUse: "No" } }
+                );
+                return;
+            }
+
+            const start = car.currentLocation;
+            const end = coordinates[currentSegmentIndex];
+            const segmentDistance = haversineDistance(start, end);
+
+            totalDistanceCovered += speed * 1; // Assuming 1-second intervals
+            const [newLat, newLng] = moveCarProgressively(start, end, totalDistanceCovered, segmentDistance);
+            car.currentLocation = [Number(newLat.toFixed(7)), Number(newLng.toFixed(7))];
+            console.log(`Car ${carId} position: (${newLat}, ${newLng})`);
 
             await carsCollection.updateOne(
-                { _id: carId },
-                { $set: { inUse: "No" } }
+                { _id: car._id },
+                { $set: { currentLocation: car.currentLocation } }
             );
 
-            delete routeCache[carId];
-
-            if (activeCars === 0) {
-                console.log("All cars have reached their destinations");
-                //await client.close(); // Keep open for ongoing updates
+            if (totalDistanceCovered >= segmentDistance) {
+                currentSegmentIndex += 1;
+                totalDistanceCovered = 0;
             }
-            continue;
-        }
-
-        const start = car.currentLocation; // Set start as the car's current location
-        const end = coordinates[currentSegmentIndex];
-        const segmentDistance = haversineDistance(start, end);
-
-        // Calculate distance covered within the current segment
-        totalDistanceCovered += speed * intervalTime;
-        const [newLat, newLng] = moveCarProgressively(start, end, totalDistanceCovered, segmentDistance);
-        car.currentLocation = [newLat, newLng];
-        console.log(`Car ${carId} position: (${newLat}, ${newLng})`);
-
-        // Update car's location in the database
-        await carsCollection.updateOne(
-            { _id: carId },
-            { $set: { 
-                currentLocation: car.currentLocation,
-                currentSegmentIndex,
-                totalDistanceCovered
-            }}
-        );
-
-        // Check if the car reached the end of the segment
-        if (totalDistanceCovered >= segmentDistance) {
-            currentSegmentIndex += 1; // Move to the next segment
-            totalDistanceCovered = 0; // Reset the distance covered within the segment
-        }
+        }, 1000); // Update every second
     }
 }
 
-// Connect to the database once, then start the interval to update car locations every second
 (async () => {
     try {
         await client.connect();
         console.log("Connected to the database.");
 
-        // Run updateCarLocation every 1 second
+        // Call updateCarLocation every second
         setInterval(async () => {
             try {
                 await updateCarLocation();
             } catch (err) {
                 console.error("An error occurred during update:", err);
             }
-        }, 1000); // 1000 milliseconds = 1 second
-
+        }, 1000); // 1 second interval
     } catch (err) {
         console.error("An error occurred while connecting:", err);
         await client.close();
@@ -202,20 +195,16 @@ async function fetchPolyline(origin, destination) {
     });
 
     if (!response.ok) {
-        console.error("Error: Received non-OK response from API:", response.status, response.statusText);
         return "error";
-      }
-  
+    }
+
     const data = await response.json();
-    console.log(data);
-    console.log("Received data from Google Maps API:", data);
-      
+    
     const encodedPolyline = data.routes[0].polyline.encodedPolyline;
     const distance = data.routes[0].distanceMeters; // total distance in meters 
     const time = parseInt(data.routes[0].duration, 10); // base 10
     const decodedPolyline = decode(encodedPolyline);
     const speed = distance / time; 
-    console.log(decodedPolyline);
     return [ decodedPolyline, speed ];
 
   } catch (error) {
@@ -223,5 +212,8 @@ async function fetchPolyline(origin, destination) {
     return "error";
   }
 }
+// things to fix
+// why it has more than seven decimal places values thingy 
+// add infinite loop every one second logic 
 
 
