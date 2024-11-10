@@ -10,7 +10,7 @@ function TravelTime() {
     try {
       // Make a GET request to the Flask backend
       const response = await fetch(
-        `http://localhost:5000/travel-time?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}`
+        `http://127.0.0.1:5000/travel-time?origin=${encodeURIComponent(origin)}&destination=${encodeURIComponent(destination)}`
       );
 
       // Check if the response is okay

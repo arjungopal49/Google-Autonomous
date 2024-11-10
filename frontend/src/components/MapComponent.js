@@ -1,41 +1,50 @@
-// src/components/MapComponent.js
-import React, { useState } from 'react';
-import { GoogleMap, LoadScript, Marker } from '@react-google-maps/api';
+import React, { useEffect } from 'react';
 
-const mapContainerStyle = {
-  width: '100%',
-  height: '90vh',
-};
+const MapComponent = () => {
+  useEffect(() => {
+    // Initialize map function
+    const initMap = () => {
+      const center = { lat: 43.0765, lng: -89.405 };
 
-const defaultCenter = {
-  lat: 43.074902, // Madison Campus
-  lng: -89.400569, // Default longitude
-};
+      // Example encoded polyline string
+      const encodedPolyline = '_p~iF~ps|U_ulLnnqC_mqNvxq`@';
 
-const MapComponent = ({ onMapClick }) => {
-  const [mapPosition, setMapPosition] = useState(defaultCenter);
+      // Decode the encoded polyline to get the path
+      const polylinePath = window.google.maps.geometry.encoding.decodePath(encodedPolyline);
 
-  const handleMapClick = (event) => {
-    const newLocation = {
-      lat: event.latLng.lat(),
-      lng: event.latLng.lng(),
+      // Create the map
+      const map = new window.google.maps.Map(document.getElementById('map'), {
+        zoom: 13,
+        center: center,
+      });
+
+      // Create the polyline
+      const polyline = new window.google.maps.Polyline({
+        path: polylinePath,
+        geodesic: true,
+        strokeColor: "#FF0000",
+        strokeOpacity: 1.0,
+        strokeWeight: 4,
+      });
+
+      // Set the polyline on the map
+      polyline.setMap(map);
     };
-    setMapPosition(newLocation);
-    onMapClick(newLocation); 
-  };
 
-  return (
-    <LoadScript googleMapsApiKey="AIzaSyCDNOcShPLnjKVBPl5CGFWoGV6IzW3QDy8">
-      <GoogleMap
-        mapContainerStyle={mapContainerStyle}
-        center={mapPosition}
-        zoom={14}
-        onClick={handleMapClick}
-      >
-        <Marker position={mapPosition} />
-      </GoogleMap>
-    </LoadScript>
-  );
+    // Load the Google Maps script and initialize the map
+    const loadScript = () => {
+      const script = document.createElement('script');
+      script.src = `https://maps.googleapis.com/maps/api/js?key=AIzaSyCDNOcShPLnjKVBPl5CGFWoGV6IzW3QDy8&libraries=geometry`;
+      script.async = true;
+      script.onload = initMap;
+      document.head.appendChild(script);
+    };
+
+    // Call the function to load the script
+    loadScript();
+  }, []);
+
+  return <div id="map" style={{ width: '100vw', height: '90vh' }}></div>;
 };
 
 export default MapComponent;
