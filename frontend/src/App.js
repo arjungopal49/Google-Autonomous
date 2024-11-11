@@ -1,4 +1,3 @@
-// App.js
 import React, { useState, useEffect } from 'react';
 import './App.css';
 import TravelTime from './components/TravelTime';
@@ -21,52 +20,32 @@ function App() {
       });
   }, []);
 
-  const fetchRoutePolyline = async () => {
-    try {
-      const response = await fetch('http://127.0.0.1:5000/route?origin=Madison,WI&destination=Chicago,IL', {
-        method: 'GET',
-      });
-      const data = await response.json();
-      setEncodedPolyline(data.encodedPolyline);
-      console.log('Encoded polyline:', data.encodedPolyline);
-    } catch (error) {
-      console.error('Error fetching route polyline:', error);
-    }
-  };
-
   const handleRideRequest = async (request) => {
     try {
-      const response = await fetch(`http://127.0.0.1:5000/choose-car?origin=${request.origin}&destination=${request.destination}`, {
+      // First, fetch the vehicle and arrival details
+      const vehicleResponse = await fetch(`http://127.0.0.1:5000/choose-car?origin=${request.origin}&destination=${request.destination}`, {
         method: 'GET',
       });
+      const vehicleData = await vehicleResponse.json();
 
-      const data = await response.json();
-      if (data.error) {
-        console.error('Error:', data.error);
+      if (vehicleData.error) {
+        console.error('Error:', vehicleData.error);
+        return;
       } else {
-        setVehicle(data.car);
-        setArrivalTime(data['arrival-time']);
-        setEncodedPolyline(data.route);
+        setVehicle(vehicleData.car);
+        setArrivalTime(vehicleData['arrival-time']);
       }
-    } catch (error) {
-      console.error('Error choosing vehicle:', error);
-    }
-  };
 
-  // Define the missing handleFreeAllCars function
-  const handleFreeAllCars = async () => {
-    try {
-      const response = await fetch('http://127.0.0.1:5000/free-all-cars', {
-        method: 'POST',
+      // Next, fetch the route polyline
+      const routeResponse = await fetch(`http://127.0.0.1:5000/route?origin=${request.origin}&destination=${request.destination}`, {
+        method: 'GET',
       });
-      
-      if (response.ok) {
-        console.log('All cars freed successfully');
-      } else {
-        console.error('Failed to free all cars');
-      }
+      const routeData = await routeResponse.json();
+      setEncodedPolyline(routeData.encodedPolyline);
+      console.log('Encoded polyline:', routeData.encodedPolyline);
+
     } catch (error) {
-      console.error('Error freeing all cars:', error);
+      console.error('Error processing ride request:', error);
     }
   };
 
@@ -90,12 +69,6 @@ function App() {
 
       <TravelTime />
       <p>The current time is {currentTime}.</p>
-      
-      {/* Add button to free all cars */}
-      <button onClick={handleFreeAllCars}>Free All Cars</button>
-
-      {/* Add button to fetch route polyline */}
-      <button onClick={fetchRoutePolyline}>Fetch Route Polyline</button>
     </div>
   );
 }
