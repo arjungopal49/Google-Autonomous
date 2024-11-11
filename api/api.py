@@ -31,7 +31,9 @@ def get_travel_time_endpoint():
 def get_route():
     origin = request.args.get('origin')
     destination = request.args.get('destination')
+    type = request.args.get('type')
 
+    print(type)
     # Check for undefined or missing parameters
     if not origin or not destination or destination == 'undefined' or origin == 'undefined':
         return jsonify({
@@ -41,6 +43,11 @@ def get_route():
                 'destination': destination
             }
         }), 400
+
+    if not type or type=="address":
+        origin = ",".join(map(str, mapsServlet.addressToCoordinates(origin)))
+        destination = ",".join(map(str, mapsServlet.addressToCoordinates(destination)))
+        
 
     try:
         polyline = mapsServlet.get_route(origin, destination)
