@@ -24,8 +24,6 @@ const RideRequestForm = ({ onSubmit }) => {
 
   return (
     <Box sx={{ minWidth: 275, mt: 4 }}>
-      <Card elevation={0}>
-        <CardContent>
           <Typography gutterBottom sx={{ color: 'text.primary', fontSize: 18 }}>
             Request a Ride
           </Typography>
@@ -57,8 +55,6 @@ const RideRequestForm = ({ onSubmit }) => {
               <Button variant="contained" type="submit" size="small" sx={{ mt: 6, display: 'block', margin: '0 auto' }}>Submit Request</Button>
             </CardActions>
           </form>
-        </CardContent>
-      </Card>
     </Box>
   );
 };

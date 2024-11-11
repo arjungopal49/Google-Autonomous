@@ -1,6 +1,6 @@
 import React, { useEffect } from 'react';
 
-const MapComponent = ({ encodedPolyline }) => {
+const MapComponent = ({ encodedPolyline, carLocation }) => {
   useEffect(() => {
     const initMap = () => {
       const center = { lat: 43.0765, lng: -89.405 };
@@ -10,10 +10,8 @@ const MapComponent = ({ encodedPolyline }) => {
       });
 
       if (encodedPolyline) {
-        // Decode the encoded polyline to get the path
         const polylinePath = window.google.maps.geometry.encoding.decodePath(encodedPolyline);
 
-        // Create the polyline
         const polyline = new window.google.maps.Polyline({
           path: polylinePath,
           geodesic: true,
@@ -22,8 +20,19 @@ const MapComponent = ({ encodedPolyline }) => {
           strokeWeight: 4,
         });
 
-        // Set the polyline on the map
         polyline.setMap(map);
+      }
+
+      // Add custom marker for car location if available
+      if (carLocation) {
+        const image = "https://developers.google.com/maps/documentation/javascript/examples/full/images/beachflag.png";
+        const carMarker = new window.google.maps.Marker({
+          position: { lat: carLocation[0], lng: carLocation[1] },
+          map: map,
+          icon: image,
+        });
+
+        map.setCenter({ lat: carLocation[0], lng: carLocation[1] }); // Center map on car location
       }
     };
 
@@ -36,9 +45,9 @@ const MapComponent = ({ encodedPolyline }) => {
     };
 
     loadScript();
-  }, [encodedPolyline]);
+  }, [encodedPolyline, carLocation]); // Re-run effect if encodedPolyline or carLocation changes
 
-  return <div id="map" style={{ width: '100vw', height: '90vh' }}></div>;
+  return <div id="map" style={{ width: '95vw', height: '90vh' }}></div>;
 };
 
 export default MapComponent;
