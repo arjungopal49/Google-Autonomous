@@ -109,7 +109,7 @@ def choose_car():
     pickupLocation = [originX, originY]
     results = mapsServlet.getRouteMatrix(carLocations, pickupLocation)
     closestCarIndex = min(results, key=lambda x: int(x['duration'].strip('s')))['carIndex']
-
+    
     carsServlet.update_car(free_cars[closestCarIndex]["_id"], destinationX, destinationY)
 
     arrivalTime = mapsServlet.get_travel_time(str(free_cars[closestCarIndex]["currentLocation"]).replace(" ", "").replace("'","")[1:-1], origin)
@@ -143,4 +143,29 @@ def getCar():
         return jsonify(car), 200
     else:
         return jsonify({"error": "Car not found"}), 404
+
+# params:
+# id - id of the car the user is currently travelling in
+# destination - address or coordinates of the destination of the user
+# type - address or coordinates
+#
+# return:
+# car - the car object, including it's current location
+# remaining-time - the estimated travel time remaining from the car's current location to the destination
+# remaining-route - the route polyline from the car's current location to the destination
+@app.route('/track-progress', methods=['GET'])
+def trackProgress():
+    carId = request.args.get('id')
+    destination = request.args.get('destination')
+    type = request.args.get('type')
+    if not type or type=="address":
+        destination = ",".join(map(str, mapsServlet.addressToCoordinates(destination)))
+
+    cars = carsServlet.get_all_cars()
+    car = next((car for car in cars if car['_id'] == carId), None)
+    if not car:
+        return jsonify({"error": "Car not found"}), 404
     
+    remainingTime = mapsServlet.get_travel_time(str(car["currentLocation"]).replace(" ", "").replace("'","")[1:-1], destination)
+    polyline = mapsServlet.get_route(str(car["currentLocation"]).replace(" ", "").replace("'","")[1:-1], destination)
+    return jsonify({'car': car, 'remaining-time': remainingTime, 'remaining-route': polyline})
