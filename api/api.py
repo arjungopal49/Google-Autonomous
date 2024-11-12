@@ -109,7 +109,7 @@ def choose_car():
     pickupLocation = [originX, originY]
     results = mapsServlet.getRouteMatrix(carLocations, pickupLocation)
     closestCarIndex = min(results, key=lambda x: int(x['duration'].strip('s')))['carIndex']
-    
+
     carsServlet.update_car(free_cars[closestCarIndex]["_id"], destinationX, destinationY)
 
     arrivalTime = mapsServlet.get_travel_time(str(free_cars[closestCarIndex]["currentLocation"]).replace(" ", "").replace("'","")[1:-1], origin)
@@ -145,8 +145,8 @@ def getCar():
         return jsonify({"error": "Car not found"}), 404
 
 # params:
-# id - id of the car the user is currently travelling in
-# destination - address or coordinates of the destination of the user
+# id - id of the car currently travelling
+# destination - address or coordinates of the destination
 # type - address or coordinates
 #
 # return:
