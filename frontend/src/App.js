@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import './App.css';
-import TravelTime from './components/TravelTime';
 import RideRequestForm from './components/RideRequestForm';
 import MiniDrawer from './components/Sidebar';
 import MapComponent from './components/MapComponent';
 import AssignedVehicle from './components/AssignedVehicle';
 import RideDetails from './components/RideDetails';
+import CarArrived from './components/CarArrived';
 
 function App() {
   const [vehicle, setVehicle] = useState(null);
@@ -15,7 +15,9 @@ function App() {
   const [rideDestination, setRideDestination] = useState('');
   const [showRideDetails, setShowRideDetails] = useState(false);
   const [carLocation, setCarLocation] = useState(null); // New state for car location
+  const [carDest, setCarDest] = useState(null);
   const [allCars, setAllCars] = useState([]); // state for list of all cars (to display on main map)
+  const [showCarArrived, setShowCarArrived] = useState(false);
 
   useEffect(() => {
     async function getAllCars() {
@@ -27,13 +29,28 @@ function App() {
     }
 
     async function trackProgress() {
-      const response = await fetch(`http://127.0.0.1:5000/track-progress?id=${vehicle._id}&destination=${vehicle.destination}`, {
+      const response = await fetch(`http://127.0.0.1:5000/track-progress?id=${vehicle._id}`, {
         method: 'GET',
       });
       const progress = await response.json();
-      setEncodedPolyline(progress["remaining-time"])
-      setCarLocation(progress.car.currentLocation);
-      setArrivalTime(progress['remaining-time']);
+      
+      if (progress.car.status === "free") {
+        setCarLocation(null);
+        setEncodedPolyline(null);
+        setVehicle(null);
+        setShowRideDetails(false);
+      } else {
+        setVehicle(progress.car);
+        setCarLocation(progress.car.currentLocation);
+        setArrivalTime(progress['remaining-time']);
+        setCarDest(progress.car.Destination);
+        if (progress.car.status === "waiting") {
+          setEncodedPolyline(null);
+          setShowCarArrived(true);
+        } else {
+          setEncodedPolyline(progress["remaining-route"]);
+        }
+      }
     }
 
     let intervalId;
@@ -43,7 +60,7 @@ function App() {
       intervalId = setInterval(getAllCars, 5000); // Fetch every 5 seconds
     }
     return () => clearInterval(intervalId); 
-  }, []);
+  }, [carLocation]);
 
   const handleRideRequest = async (request) => {
     try {
@@ -83,12 +100,20 @@ function App() {
     }
   };
 
+  const handleStartRide = async() => {
+    const response = await fetch(`http://127.0.0.1:5000/start-ride?id=${vehicle["_id"]}&destination=${rideDestination}`, {
+      method: 'POST',
+    });
+    console.log(response.json())
+    setShowCarArrived(false);
+  }
+
   return (
     <div className="App">
       <div className="app-container">
         <MiniDrawer />
         <div className="map-wrapper">
-          <MapComponent encodedPolyline={encodedPolyline} carLocation={carLocation} allCars={allCars}/> {/* Pass carLocation */}
+          <MapComponent encodedPolyline={encodedPolyline} carLocation={carLocation} carDest={carDest} allCars={allCars}/> {/* Pass carLocation */}
           <div className="overlay-form">
             <RideRequestForm onSubmit={handleRideRequest} />
           </div>
@@ -102,6 +127,12 @@ function App() {
           {showRideDetails && (
             <div>
               <RideDetails origin={rideOrigin} destination={rideDestination} />
+            </div>
+          )}
+
+          {showCarArrived && (
+            <div>
+              <CarArrived startRide={handleStartRide} />
             </div>
           )}
         </div>

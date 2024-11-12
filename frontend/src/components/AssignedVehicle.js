@@ -21,7 +21,7 @@ const AssignedVehicle = ({ vehicle, arrivalTime }) => {
         />
         <CardContent>
           <Typography variant="h5" component="div" gutterBottom>
-            Assigned Vehicle
+            {vehicle.status === "ride" ? "Ride In Progress": "Assigned Vehicle"}
           </Typography>
           <Typography variant="body2" sx={{ mb: 1.5 }}>
             <strong>Vehicle ID:</strong> {vehicle._id}

@@ -26,7 +26,7 @@ def request_car():
 
 
 
-def update_car(carId, destinationX, destinationY):
+def update_car(carId, destinationX, destinationY, status):
     # Making a POST request to the /request-car endpoint of the server.mjs
     try:
         # Replace with the correct port if necessary
@@ -35,7 +35,8 @@ def update_car(carId, destinationX, destinationY):
         body = {
             "carId": carId,
             "destinationX": destinationX,
-            "destinationY": destinationY
+            "destinationY": destinationY,
+            "status": status
         }
 
         # Make the request to the Express server

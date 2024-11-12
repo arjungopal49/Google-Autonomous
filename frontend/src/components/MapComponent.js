@@ -2,7 +2,7 @@ import React, { useEffect, useRef } from 'react';
 import carGreen from '../Images/carGreen.png';
 import carRed from '../Images/carRed.png';
 
-const MapComponent = ({ encodedPolyline, carLocation, allCars }) => {
+const MapComponent = ({ encodedPolyline, carLocation, carDest, allCars }) => {
   const mapRef = useRef(null);  // Store map instance
   const polylineRef = useRef(null); // Store polyline instance
   const markersRef = useRef([]); // Store markers
@@ -32,11 +32,15 @@ const MapComponent = ({ encodedPolyline, carLocation, allCars }) => {
   }, []); // Run only once to initialize the map
 
   useEffect(() => {
+    if (mapRef.current && !encodedPolyline) {
+      if (polylineRef.current) {
+        polylineRef.current.setMap(null); // Remove previous polyline if it exists
+      }
+    }
     if (mapRef.current && encodedPolyline) {
       if (polylineRef.current) {
         polylineRef.current.setMap(null); // Remove previous polyline if it exists
       }
-
       const polylinePath = window.google.maps.geometry.encoding.decodePath(encodedPolyline);
       polylineRef.current = new window.google.maps.Polyline({
         path: polylinePath,
@@ -55,13 +59,22 @@ const MapComponent = ({ encodedPolyline, carLocation, allCars }) => {
       markersRef.current.forEach(marker => marker.setMap(null));
       markersRef.current = [];
 
-      if (carLocation) {
+      if (carLocation && carDest) {
         const image = "https://developers.google.com/maps/documentation/javascript/examples/full/images/beachflag.png";
-        const carMarker = new window.google.maps.Marker({
-          position: { lat: carLocation[0], lng: carLocation[1] },
+        const destinationMarker = new window.google.maps.Marker({
+          position: { lat: carDest[0], lng: carDest[1] },
           map: mapRef.current,
           icon: image,
         });
+        const carMarker = new window.google.maps.Marker({
+          position: { lat: carLocation[0], lng: carLocation[1] },
+          map: mapRef.current,
+          icon: {
+            url: carRed,
+            scaledSize: new window.google.maps.Size(60, 50)
+          }
+        });
+        markersRef.current.push(destinationMarker);
         markersRef.current.push(carMarker);
         mapRef.current.setCenter({ lat: carLocation[0], lng: carLocation[1] }); // Center map on car location
       } else if (allCars) {
@@ -70,7 +83,7 @@ const MapComponent = ({ encodedPolyline, carLocation, allCars }) => {
             position: { lat: car.currentLocation[0], lng: car.currentLocation[1] },
             map: mapRef.current,
             icon: {
-              url: car.inUse === 'Yes' ? carRed : carGreen,
+              url: car.status === 'free' ? carGreen : carRed,
               scaledSize: new window.google.maps.Size(60, 50)
             }
           });

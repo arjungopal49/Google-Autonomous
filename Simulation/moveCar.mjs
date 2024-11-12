@@ -1,5 +1,6 @@
 import {MongoClient, ServerApiVersion, ObjectId} from 'mongodb';
 import polylineCodec from '@googlemaps/polyline-codec';
+import fetch from 'node-fetch';
 const { decode } = polylineCodec;
 
 
@@ -24,7 +25,7 @@ let car = {
     id: null,
     currentLocation: [null, null], // Initialize with null indicating no value set yet
     destination: [null, null],     // Initialize with null as placeholder for future values
-    inUse: "No"
+    status: "free"
 };
 
 
@@ -64,7 +65,7 @@ async function updateCarLocation() {
     const database = client.db(dbName);
     const carsCollection = database.collection('Autonomous Cars');
 
-    const query = { inUse: "Yes" };
+    const query = { status: { $in: ["toUser", "ride"] } };
     const carsInUse = await carsCollection.find(query).toArray();
 
     for (let car of carsInUse) {
@@ -98,9 +99,12 @@ async function updateCarLocation() {
                 activeCarIntervals.delete(carId); // Remove car from active set
                 delete routeCache[carId];
 
+                // Determine the new status based on the current status of the car
+                const newStatus = car.status === "toUser" ? "waiting" : car.status === "ride" ? "free" : car.status;
+
                 await carsCollection.updateOne(
                     { _id: car._id },
-                    { $set: { inUse: "No" } }
+                    { $set: { status: newStatus } }
                 );
                 return;
             }

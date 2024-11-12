@@ -23,7 +23,7 @@ let car = {
     id: null,
     currentLocation: [null, null], // Initialize with null indicating no value set yet
     destination: [null, null],     // Initialize with null as placeholder for future values
-    inUse: "No"
+    status: "free"
 };
 
 // return an array of all free cars to backend
@@ -32,7 +32,7 @@ export async function query() {
         await client.connect();  // Ensure connection is established
         const database = client.db(dbName);
         const cars = database.collection('Autonomous Cars');
-        const query = {inUse: "No"};
+        const query = {status: "free"};
 
         // Convert cursor to array so you can return the results
         const freeCars = await cars.find(query).toArray();
@@ -47,7 +47,7 @@ export async function query() {
 }
 
 // function to update car location picked by backend for the ride
-export async function updateCar(carId, destinationX, destinationY) {
+export async function updateCar(carId, destinationX, destinationY, status) {
     try {
         await client.connect();
         const database = client.db(dbName);
@@ -62,7 +62,7 @@ export async function updateCar(carId, destinationX, destinationY) {
             $set: {
                 "Destination.0": destinationX,
                 "Destination.1": destinationY,
-                "inUse": "Yes",
+                "status": status,
             },
         };
 
@@ -97,7 +97,7 @@ export async function getAllCars() {
     }
 }
 
-// function to free up car after the ride is completed. takes in carId and change the inuse status to No
+// function to free up car after the ride is completed. takes in carId and change the status to free
 export async function freeUpCar(carId) {
     try {
         await client.connect();
@@ -107,7 +107,7 @@ export async function freeUpCar(carId) {
         const filter = {_id: new ObjectId(carId)};
         const updateDoc = {
             $set: {
-                inUse: "No"
+                status: "free"
             },
         };
 
