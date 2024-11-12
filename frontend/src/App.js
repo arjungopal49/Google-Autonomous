@@ -8,7 +8,6 @@ import AssignedVehicle from './components/AssignedVehicle';
 import RideDetails from './components/RideDetails';
 
 function App() {
-  const [currentTime, setCurrentTime] = useState(0);
   const [vehicle, setVehicle] = useState(null);
   const [arrivalTime, setArrivalTime] = useState(null);
   const [encodedPolyline, setEncodedPolyline] = useState(null);
@@ -16,13 +15,34 @@ function App() {
   const [rideDestination, setRideDestination] = useState('');
   const [showRideDetails, setShowRideDetails] = useState(false);
   const [carLocation, setCarLocation] = useState(null); // New state for car location
+  const [allCars, setAllCars] = useState([]); // state for list of all cars (to display on main map)
 
   useEffect(() => {
-    fetch('http://127.0.0.1:5000/time')
-      .then((res) => res.json())
-      .then((data) => {
-        setCurrentTime(data.time);
+    async function getAllCars() {
+      const response = await fetch(`http://127.0.0.1:5000/get-all-cars`, {
+        method: 'GET',
       });
+      const carData = await response.json();
+      setAllCars(carData)
+    }
+
+    async function trackProgress() {
+      const response = await fetch(`http://127.0.0.1:5000/track-progress?id=${vehicle._id}&destination=${vehicle.destination}`, {
+        method: 'GET',
+      });
+      const progress = await response.json();
+      setEncodedPolyline(progress["remaining-time"])
+      setCarLocation(progress.car.currentLocation);
+      setArrivalTime(progress['remaining-time']);
+    }
+
+    let intervalId;
+    if (carLocation) {
+      intervalId = setInterval(trackProgress, 5000);  // Fetch every 5 seconds
+    } else {
+      intervalId = setInterval(getAllCars, 5000); // Fetch every 5 seconds
+    }
+    return () => clearInterval(intervalId); 
   }, []);
 
   const handleRideRequest = async (request) => {
@@ -68,7 +88,7 @@ function App() {
       <div className="app-container">
         <MiniDrawer />
         <div className="map-wrapper">
-          <MapComponent encodedPolyline={encodedPolyline} carLocation={carLocation} /> {/* Pass carLocation */}
+          <MapComponent encodedPolyline={encodedPolyline} carLocation={carLocation} allCars={allCars}/> {/* Pass carLocation */}
           <div className="overlay-form">
             <RideRequestForm onSubmit={handleRideRequest} />
           </div>
@@ -86,9 +106,6 @@ function App() {
           )}
         </div>
       </div>
-
-      <TravelTime />
-      <p>The current time is {currentTime}.</p>
     </div>
   );
 }
