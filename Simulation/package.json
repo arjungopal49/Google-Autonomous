@@ -9,8 +9,10 @@
   "keywords": [],
   "author": "",
   "license": "ISC",
+  "type": "module",
   "dependencies": {
     "@googlemaps/polyline-codec": "^1.0.28",
+    "dotenv": "^16.4.5",
     "express": "^4.21.0",
     "mongodb": "^6.9.0",
     "node-fetch": "^3.3.2",

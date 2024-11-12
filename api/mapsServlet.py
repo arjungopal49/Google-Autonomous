@@ -1,8 +1,10 @@
 import requests
 from flask import jsonify
+from config import API_KEY
 
 # temoporal API key
-API_KEY = "AIzaSyCDNOcShPLnjKVBPl5CGFWoGV6IzW3QDy8"
+if not API_KEY:
+    raise ValueError("API_KEY not found in config.py.")
 
 def get_travel_time(origin, destination):
     if not origin or not destination:

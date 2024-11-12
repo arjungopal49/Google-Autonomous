@@ -2,13 +2,13 @@ import {MongoClient, ServerApiVersion, ObjectId} from 'mongodb';
 import polylineCodec from '@googlemaps/polyline-codec';
 import fetch from 'node-fetch';
 const { decode } = polylineCodec;
+import config from './config.js';
 
 
 const username = encodeURIComponent("eksmith26");
 const password = encodeURIComponent("Grace27$$");  // URL encoded password
 const dbName = "Simu8";
-const API_KEY = "AIzaSyCDNOcShPLnjKVBPl5CGFWoGV6IzW3QDy8";
-
+const API_KEY = config.API_KEY;
 
 const uri = `mongodb+srv://${username}:${password}@autosimulate.7qsly.mongodb.net/?retryWrites=true&w=majority&appName=AutoSimulate`;
 
