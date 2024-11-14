@@ -92,42 +92,42 @@ async function updateCarLocation() {
         let totalDistanceCovered = 0;
         const speed = routeCache[carId].speed; // Car speed in meters per second
 
-        const intervalId = setInterval(async () => {
-            if (currentSegmentIndex >= coordinates.length - 1) {
-                console.log(`Car ${carId} has reached its destination.`);
-                clearInterval(intervalId);
-                activeCarIntervals.delete(carId); // Remove car from active set
-                delete routeCache[carId];
+       
+        if (currentSegmentIndex >= coordinates.length - 1) {
+            console.log(`Car ${carId} has reached its destination.`);
+            clearInterval(intervalId);
+            activeCarIntervals.delete(carId); // Remove car from active set
+            delete routeCache[carId];
 
-                // Determine the new status based on the current status of the car
-                const newStatus = car.status === "toUser" ? "waiting" : car.status === "ride" ? "free" : car.status;
-
-                await carsCollection.updateOne(
-                    { _id: car._id },
-                    { $set: { status: newStatus } }
-                );
-                return;
-            }
-
-            const start = car.currentLocation;
-            const end = coordinates[currentSegmentIndex];
-            const segmentDistance = haversineDistance(start, end);
-
-            totalDistanceCovered += speed * 1; // Assuming 1-second intervals
-            const [newLat, newLng] = moveCarProgressively(start, end, totalDistanceCovered, segmentDistance);
-            car.currentLocation = [Number(newLat.toFixed(7)), Number(newLng.toFixed(7))];
-            console.log(`Car ${carId} position: (${newLat}, ${newLng})`);
+            // Determine the new status based on the current status of the car
+            const newStatus = car.status === "toUser" ? "waiting" : car.status === "ride" ? "free" : car.status;
 
             await carsCollection.updateOne(
                 { _id: car._id },
-                { $set: { currentLocation: car.currentLocation } }
+                { $set: { status: newStatus } }
             );
+            return;
+        }
 
-            if (totalDistanceCovered >= segmentDistance) {
-                currentSegmentIndex += 1;
-                totalDistanceCovered = 0;
-            }
-        }, 1000); // Update every second
+        const start = car.currentLocation;
+        const end = coordinates[currentSegmentIndex];
+        const segmentDistance = haversineDistance(start, end);
+
+        totalDistanceCovered += speed * 1; // Assuming 1-second intervals
+        const [newLat, newLng] = moveCarProgressively(start, end, totalDistanceCovered, segmentDistance);
+        car.currentLocation = [Number(newLat.toFixed(7)), Number(newLng.toFixed(7))];
+        console.log(`Car ${carId} position: (${newLat}, ${newLng})`);
+
+        await carsCollection.updateOne(
+            { _id: car._id },
+            { $set: { currentLocation: car.currentLocation } }
+        );
+
+        if (totalDistanceCovered >= segmentDistance) {
+            currentSegmentIndex += 1;
+            totalDistanceCovered = 0;
+        }
+ 
     }
 }
 
@@ -143,7 +143,7 @@ async function updateCarLocation() {
             } catch (err) {
                 console.error("An error occurred during update:", err);
             }
-        }, 1000); // 1 second interval
+        }, 1000); // this is where to change the "how fast the world is moving"
     } catch (err) {
         console.error("An error occurred while connecting:", err);
         await client.close();
@@ -216,8 +216,4 @@ async function fetchPolyline(origin, destination) {
     return "error";
   }
 }
-// things to fix
-// why it has more than seven decimal places values thingy 
-// add infinite loop every one second logic 
-
 
