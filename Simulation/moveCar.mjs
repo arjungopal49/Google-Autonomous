@@ -1,7 +1,8 @@
 import {MongoClient, ServerApiVersion, ObjectId} from 'mongodb';
 import polylineCodec from '@googlemaps/polyline-codec';
 import fetch from 'node-fetch';
-const { decode } = polylineCodec;
+
+const {decode} = polylineCodec;
 import config from './config.js';
 
 
@@ -36,8 +37,8 @@ function haversineDistance([x1, y1], [x2, y2]) {
     const dLat = toRadians(x2 - x1);
     const dLng = toRadians(y2 - y1);
     const a = Math.sin(dLat / 2) * Math.sin(dLat / 2) +
-              Math.cos(toRadians(x1)) * Math.cos(toRadians(x2)) *
-              Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        Math.cos(toRadians(x1)) * Math.cos(toRadians(x2)) *
+        Math.sin(dLng / 2) * Math.sin(dLng / 2);
     const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     return R * c;
 }
@@ -47,11 +48,14 @@ function interpolate([x1, y1], [x2, y2], ratio) {
     const x = x1 + (x2 - x1) * ratio;
     const y = y1 + (y2 - y1) * ratio;
     return [Number(x.toFixed(7)), Number(y.toFixed(7))];
-    
+
 }
 
 // Cache for storing each car's route coordinates
 const routeCache = {};
+
+// Map to store state for each car using the car's ID as the key
+const carStates = new Map();
 
 // Function to move car progressively within a segment based on distance covered
 function moveCarProgressively(start, end, distanceCovered, segmentDistance) {
@@ -59,23 +63,25 @@ function moveCarProgressively(start, end, distanceCovered, segmentDistance) {
     return interpolate(start, end, Math.min(ratio, 1)); // Ensure ratio does not exceed 1
 }
 
-const activeCarIntervals = new Set(); // Track cars with active intervals
-
 async function updateCarLocation() {
     const database = client.db(dbName);
     const carsCollection = database.collection('Autonomous Cars');
 
-    const query = { status: { $in: ["toUser", "ride"] } };
+    const query = {status: {$in: ["toUser", "ride"]}};
     const carsInUse = await carsCollection.find(query).toArray();
 
     for (let car of carsInUse) {
         let carId = car._id.toString(); // Ensure consistent ID tracking
 
-        // Skip if the car already has an active interval
-        if (activeCarIntervals.has(carId)) continue;
+        // Initialize state for each car if it doesn't exist
+        if (!carStates.has(carId)) {
+            carStates.set(carId, {
+                currentSegmentIndex: 0,
+                totalDistanceCovered: 0
+            });
+        }
 
-        console.log(`Starting location updates for car ${carId}`);
-        activeCarIntervals.add(carId); // Mark car as being actively updated
+        let carState = carStates.get(carId);
 
         // Fetch route if not cached
         if (!routeCache[carId]) {
@@ -87,30 +93,27 @@ async function updateCarLocation() {
             };
         }
 
-        const coordinates = routeCache[carId].coordinates;
-        let currentSegmentIndex = 0;
-        let totalDistanceCovered = 0;
-        const speed = routeCache[carId].speed; // Car speed in meters per second
+        const {coordinates, speed} = routeCache[carId];
+        let {currentSegmentIndex, totalDistanceCovered} = carState;
 
-       
         if (currentSegmentIndex >= coordinates.length - 1) {
             console.log(`Car ${carId} has reached its destination.`);
-            clearInterval(intervalId);
-            activeCarIntervals.delete(carId); // Remove car from active set
             delete routeCache[carId];
 
             // Determine the new status based on the current status of the car
             const newStatus = car.status === "toUser" ? "waiting" : car.status === "ride" ? "free" : car.status;
 
             await carsCollection.updateOne(
-                { _id: car._id },
-                { $set: { status: newStatus } }
+                {_id: car._id},
+                {$set: {status: newStatus}}
             );
             return;
         }
 
+        console.log(`Car ${carId} is moving...`);
         const start = car.currentLocation;
-        const end = coordinates[currentSegmentIndex];
+        const end = coordinates[currentSegmentIndex+1];
+        console.log(`Start: ${start}, End: ${end}`);
         const segmentDistance = haversineDistance(start, end);
 
         totalDistanceCovered += speed * 1; // Assuming 1-second intervals
@@ -119,15 +122,17 @@ async function updateCarLocation() {
         console.log(`Car ${carId} position: (${newLat}, ${newLng})`);
 
         await carsCollection.updateOne(
-            { _id: car._id },
-            { $set: { currentLocation: car.currentLocation } }
+            {_id: car._id},
+            {$set: {currentLocation: car.currentLocation}}
         );
 
         if (totalDistanceCovered >= segmentDistance) {
             currentSegmentIndex += 1;
-            totalDistanceCovered = 0;
+            totalDistanceCovered -= segmentDistance;
         }
- 
+        // Update state in the Map for the next iteration
+        carStates.set(carId, { currentSegmentIndex, totalDistanceCovered });
+
     }
 }
 
@@ -153,67 +158,73 @@ async function updateCarLocation() {
 
 // Helper function to fetch the polyline from Google Maps API
 async function fetchPolyline(origin, destination) {
-  if (!origin || !destination || origin === 'undefined' || destination === 'undefined') {
-    return "error";
-  }
-
-  try {
-    // Parse the coordinates
-    const [originLat, originLng] = origin.split(',').map(Number);
-    const [destLat, destLng] = destination.split(',').map(Number);
-
-    const url = 'https://routes.googleapis.com/directions/v2:computeRoutes';
-
-    const headers = {
-        'Content-Type': 'application/json',
-        'X-Goog-Api-Key': API_KEY,  
-        'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline'
-    };
-
-    const body = JSON.stringify({
-        origin: {
-            location: {
-                latLng: {
-                    latitude: originLat,
-                    longitude: originLng
-                }
-            }
-        },
-        destination: {
-            location: {
-                latLng: {
-                    latitude: destLat,
-                    longitude: destLng
-                }
-            }
-        },
-        travelMode: "DRIVE",
-        routingPreference: "TRAFFIC_AWARE",
-        computeAlternativeRoutes: false
-    });
-
-    const response = await fetch(url, {
-        method: 'POST',
-        headers: headers,
-        body: body
-    });
-
-    if (!response.ok) {
+    if (!origin || !destination || origin === 'undefined' || destination === 'undefined') {
         return "error";
     }
 
-    const data = await response.json();
-    
-    const encodedPolyline = data.routes[0].polyline.encodedPolyline;
-    const distance = data.routes[0].distanceMeters; // total distance in meters 
-    const time = parseInt(data.routes[0].duration, 10); // base 10
-    const decodedPolyline = decode(encodedPolyline);
-    const speed = distance / time; 
-    return [ decodedPolyline, speed ];
+    try {
+        // Parse the coordinates
+        const [originLat, originLng] = origin.split(',').map(Number);
+        const [destLat, destLng] = destination.split(',').map(Number);
 
-  } catch (error) {
-    console.error(`Error in getRoute: ${error}`);
-    return "error";
-  }
+        const url = 'https://routes.googleapis.com/directions/v2:computeRoutes';
+
+        const headers = {
+            'Content-Type': 'application/json',
+            'X-Goog-Api-Key': API_KEY,
+            'X-Goog-FieldMask': 'routes.duration,routes.distanceMeters,routes.polyline.encodedPolyline'
+        };
+
+        const body = JSON.stringify({
+            origin: {
+                location: {
+                    latLng: {
+                        latitude: originLat,
+                        longitude: originLng
+                    }
+                }
+            },
+            destination: {
+                location: {
+                    latLng: {
+                        latitude: destLat,
+                        longitude: destLng
+                    }
+                }
+            },
+            travelMode: "DRIVE",
+            routingPreference: "TRAFFIC_AWARE",
+            computeAlternativeRoutes: false
+        });
+
+        const response = await fetch(url, {
+            method: 'POST',
+            headers: headers,
+            body: body
+        });
+
+        if (!response.ok) {
+            return "error";
+        }
+
+        const data = await response.json();
+        console.log('Received data:', data);
+        console.log('Routes:', data.routes);
+        if (!data.routes || !data.routes.length) {
+            console.error('No routes returned from API');
+            return 'error';
+        }
+
+        const encodedPolyline = data.routes[0].polyline.encodedPolyline;
+        const distance = data.routes[0].distanceMeters; // total distance in meters
+        const time = parseInt(data.routes[0].duration, 10); // base 10
+        const decodedPolyline = decode(encodedPolyline);
+        const speed = distance / time;
+        return [decodedPolyline, speed];
+
+    } catch (error) {
+        console.error(`Error in getRoute: ${error}`);
+        return "error";
+    }
 }
 
