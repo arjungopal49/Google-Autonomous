@@ -1,11 +1,10 @@
 import {MongoClient, ServerApiVersion, ObjectId} from 'mongodb';
-import polylineCodec from '@googlemaps/polyline-codec';
-const { decode } = polylineCodec;
-
 
 const username = encodeURIComponent("eksmith26");
 const password = encodeURIComponent("Grace27$$");  // URL encoded password
 const dbName = "Simu8";
+export let worldSpeed = 1000;
+
 const uri = `mongodb+srv://${username}:${password}@autosimulate.7qsly.mongodb.net/?retryWrites=true&w=majority&appName=AutoSimulate`;
 
 const client = new MongoClient(uri, {
@@ -153,8 +152,8 @@ export async function generateTraffic(minLatLng, maxLatLng){
 }
 
 // function to remove traffic from the database
-export async function removeTraffic(minLatLng, maxLatLng){
-    try{
+export async function removeTraffic(minLatLng, maxLatLng) {
+    try {
         await client.connect();
         const database = client.db(dbName);
         const traffic = database.collection('Traffic');
@@ -165,11 +164,14 @@ export async function removeTraffic(minLatLng, maxLatLng){
         };
         const result = await traffic.deleteMany(query);
         console.log("Traffic removed successfully");
-    }
-    catch(err){
+    } catch (err) {
         console.error("An error occurred:", err);
-    }
-    finally{
+    } finally {
         await client.close();
     }
+}
+export async function setSpeed(worldSpeed) {
+
+    let howFastWorldMoves = 1000 / worldSpeed;
+    worldSpeed = howFastWorldMoves;
 }

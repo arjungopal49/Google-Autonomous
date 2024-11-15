@@ -1,5 +1,5 @@
 import express from "./node_modules/express/index.js";
-import {freeUpCar, generateTraffic, getAllCars, query, removeTraffic, updateCar} from "./Database.mjs";
+import {setSpeed, freeUpCar, generateTraffic, getAllCars, query, removeTraffic, updateCar} from "./Database.mjs";
 
 const app = express();
 const port = 4000;
@@ -79,5 +79,15 @@ app.get('/remove-traffic', async (req, res) => {
 
 app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
+});
+
+app.post('/set_Speed', async (req, res) => {
+  const { speed } = req.body;
+  try {
+    const result = await setSpeed(speed);
+      res.status(200).send();// Send 200 status code if the car is freed successfully
+  } catch (error) {
+    res.status(500).json({ error: "Error while freeing up car." });
+  }
 });
 
