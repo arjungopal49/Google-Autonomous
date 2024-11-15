@@ -1,12 +1,10 @@
 import {MongoClient, ServerApiVersion, ObjectId} from 'mongodb';
-import polylineCodec from '@googlemaps/polyline-codec';
-const { decode } = polylineCodec;
-
 
 const username = encodeURIComponent("eksmith26");
 const password = encodeURIComponent("Grace27$$");  // URL encoded password
 const dbName = "Simu8";
-const API_KEY = "AIzaSyCDNOcShPLnjKVBPl5CGFWoGV6IzW3QDy8";
+
+export let worldSpeed = 1000;
 
 const uri = `mongodb+srv://${username}:${password}@autosimulate.7qsly.mongodb.net/?retryWrites=true&w=majority&appName=AutoSimulate`;
 
@@ -123,4 +121,11 @@ export async function freeUpCar(carId) {
     } finally {
         await client.close();
     }
+}
+
+export async function setSpeed(worldSpeed) {
+
+    let howFastWorldMoves = 1000 / worldSpeed;
+    worldSpeed = howFastWorldMoves;
+
 }

@@ -1,6 +1,8 @@
 import {MongoClient, ServerApiVersion, ObjectId} from 'mongodb';
 import polylineCodec from '@googlemaps/polyline-codec';
 import fetch from 'node-fetch';
+import {worldSpeed} from "./Database.mjs";
+
 
 const {decode} = polylineCodec;
 import config from './config.js';
@@ -57,11 +59,6 @@ const routeCache = {};
 // Map to store state for each car using the car's ID as the key
 const carStates = new Map();
 
-// Function to move car progressively within a segment based on distance covered
-function moveCarProgressively(start, end, distanceCovered, segmentDistance) {
-    const ratio = distanceCovered / segmentDistance;
-    return interpolate(start, end, Math.min(ratio, 1)); // Ensure ratio does not exceed 1
-}
 
 async function updateCarLocation() {
     const database = client.db(dbName);
@@ -93,6 +90,16 @@ async function updateCarLocation() {
                 console.error(`Failed to fetch route for car ${carId}`);
                 continue;
             }
+            await carsCollection.updateOne(
+                { _id: car._id },
+                {
+                    $set: { // Use `$set` to update fields
+                        polyline: routeInfo[2],
+                        speed: routeInfo[1],
+                    }
+                }
+            );
+
 
             routeCache[carId] = {
                 coordinates: routeInfo[0], // Decoded polyline coordinates
@@ -102,7 +109,7 @@ async function updateCarLocation() {
 
         const { coordinates, speed } = routeCache[carId];
         const { currentSegmentIndex, segmentDistanceCovered } = carState;
-        
+
         // Current and next coordinates
         const start = coordinates[currentSegmentIndex];
         const end = coordinates[currentSegmentIndex + 1];
@@ -173,7 +180,7 @@ async function updateCarLocation() {
             } catch (err) {
                 console.error("An error occurred during update:", err);
             }
-        }, 1000); // this is where to change the "how fast the world is moving"
+        }, worldSpeed); // this is where to change the "how fast the world is moving"
     } catch (err) {
         console.error("An error occurred while connecting:", err);
         await client.close();
@@ -245,7 +252,7 @@ async function fetchPolyline(origin, destination) {
         const time = parseInt(data.routes[0].duration, 10); // base 10
         const decodedPolyline = decode(encodedPolyline);
         const speed = distance / time;
-        return [decodedPolyline, speed];
+        return [decodedPolyline, speed, encodedPolyline];
 
     } catch (error) {
         console.error(`Error in getRoute: ${error}`);
