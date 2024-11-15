@@ -57,15 +57,8 @@ const routeCache = {};
 // Map to store state for each car using the car's ID as the key
 const carStates = new Map();
 
-// Function to move car progressively within a segment based on distance covered
-function moveCarProgressively(start, end, distanceCovered, segmentDistance) {
-    const ratio = distanceCovered / segmentDistance;
-    return interpolate(start, end, Math.min(ratio, 1)); // Ensure ratio does not exceed 1
-}
-
-
 // Function to check if current coordinates of the car within the square of the traffic
-async function checkTraffic(carLocation, traffic) {
+async function checkTraffic(carLocation) {
     try {
         // Connect to the MongoDB client
         await client.connect();
@@ -107,6 +100,8 @@ async function checkTraffic(carLocation, traffic) {
         await client.close();
     }
 }
+
+
 async function updateCarLocation() {
     const database = client.db(dbName);
     const carsCollection = database.collection('Autonomous Cars');
@@ -144,13 +139,25 @@ async function updateCarLocation() {
             };
         }
 
-        const { coordinates, speed } = routeCache[carId];
+        // Get the current coordinated of the car
+        const carLocation = car.currentLocation;
+
+        // Check if the car is in traffic
+        const isInTraffic = await checkTraffic(carLocation);
+
+        let { coordinates, speed } = routeCache[carId];
         const { currentSegmentIndex, segmentDistanceCovered } = carState;
+
+        if (isInTraffic) {
+            console.log(`Car ${carId} is in traffic. Waiting...`);
+            speed = speed / 2; // Reduce speed by half when in traffic
+        }
         
         // Current and next coordinates
         const start = coordinates[currentSegmentIndex];
         const end = coordinates[currentSegmentIndex + 1];
         const segmentDistance = haversineDistance(start, end);
+
 
         // Update distance covered in the current segment
         const distanceToMove = speed; // Distance to move in this interval
@@ -197,21 +204,11 @@ async function updateCarLocation() {
             { $set: { currentLocation: car.currentLocation } }
         );
 
-<<<<<<< HEAD
-        if (totalDistanceCovered >= segmentDistance) {
-            currentSegmentIndex += 1;
-            totalDistanceCovered = 0;
-        }
-        // Update state in the Map for the next iteration
-        carStates.set(carId, { currentSegmentIndex, totalDistanceCovered });
-
-=======
         // Update car state for the next iteration
         carStates.set(carId, {
             currentSegmentIndex: newSegmentIndex,
             segmentDistanceCovered: updatedDistance,
         });
->>>>>>> 320fbac497154443e5c53047545569f40b2e2b9b
     }
 }
 

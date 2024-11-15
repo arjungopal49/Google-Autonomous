@@ -54,7 +54,7 @@ app.post('/free-car', async (req, res) => {
 });
 
 //Endpoint to generate traffic
-app.post('/generate-traffic', async (req, res) => {
+app.get('/generate-traffic', async (req, res) => {
   const { traffic } = req.body;
   try {
     // Generate traffic
@@ -66,7 +66,7 @@ app.post('/generate-traffic', async (req, res) => {
 });
 
 // Endpoint to remove traffic
-app.post('/remove-traffic', async (req, res) => {
+app.get('/remove-traffic', async (req, res) => {
     const { traffic } = req.body;
   try {
     // Delete traffic
