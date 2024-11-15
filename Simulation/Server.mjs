@@ -1,5 +1,5 @@
 import express from "./node_modules/express/index.js";
-import {freeUpCar, getAllCars, query, updateCar} from "./Database.mjs";
+import {freeUpCar, generateTraffic, getAllCars, query, removeTraffic, updateCar} from "./Database.mjs";
 
 const app = express();
 const port = 4000;
@@ -50,6 +50,30 @@ app.post('/free-car', async (req, res) => {
       res.status(200).send();// Send 200 status code if the car is freed successfully
   } catch (error) {
     res.status(500).json({ error: "Error while freeing up car." });
+  }
+});
+
+//Endpoint to generate traffic
+app.post('/generate-traffic', async (req, res) => {
+  const { traffic } = req.body;
+  try {
+    // Generate traffic
+    const result = await generateTraffic(traffic);
+    res.status(200).send();// Send 200 status code if the traffic is generated successfully
+  } catch (error) {
+    res.status(500).json({ error: "Error while generating traffic." });
+  }
+});
+
+// Endpoint to remove traffic
+app.post('/remove-traffic', async (req, res) => {
+    const { traffic } = req.body;
+  try {
+    // Delete traffic
+    const result = await removeTraffic(traffic);
+    res.status(200).send();// Send 200 status code if the traffic is deleted successfully
+  } catch (error) {
+    res.status(500).json({ error: "Error while deleting traffic." });
   }
 });
 

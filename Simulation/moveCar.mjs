@@ -63,6 +63,50 @@ function moveCarProgressively(start, end, distanceCovered, segmentDistance) {
     return interpolate(start, end, Math.min(ratio, 1)); // Ensure ratio does not exceed 1
 }
 
+
+// Function to check if current coordinates of the car within the square of the traffic
+async function checkTraffic(carLocation, traffic) {
+    try {
+        // Connect to the MongoDB client
+        await client.connect();
+        const database = client.db(dbName);
+        const traffic = database.collection('Traffic');
+
+        // Fetch all traffic squares from the database
+        const rectangles = await traffic.find().toArray();
+
+        const [carLat, carLng] = carLocation;
+        let isCarInTraffic = false;
+
+        // Check if the car is within any of the rectangles
+        for (const rectangle of rectangles) {
+            const { bottomLeft, bottomRight, topLeft, topRight } = rectangle;
+
+            // Calculate boundaries
+            const minLat = bottomLeft.lat;
+            const maxLat = topLeft.lat;
+            const minLng = bottomLeft.lng;
+            const maxLng = bottomRight.lng;
+
+            // Check if the car's location is within the bounds of the current rectangle
+            if (
+                carLat >= minLat && carLat <= maxLat && // Latitude range check
+                carLng >= minLng && carLng <= maxLng    // Longitude range check
+            ) {
+                isCarInTraffic = true;
+                break; // Exit the loop once a match is found
+            }
+        }
+
+        console.log(`Car is ${isCarInTraffic ? 'in' : 'not in'} traffic.`);
+        return isCarInTraffic;
+    } catch (err) {
+        console.error("An error occurred while checking traffic:", err);
+        return false;
+    } finally {
+        await client.close();
+    }
+}
 async function updateCarLocation() {
     const database = client.db(dbName);
     const carsCollection = database.collection('Autonomous Cars');
@@ -96,20 +140,6 @@ async function updateCarLocation() {
         const {coordinates, speed} = routeCache[carId];
         let {currentSegmentIndex, totalDistanceCovered} = carState;
 
-        if (currentSegmentIndex >= coordinates.length - 1) {
-            console.log(`Car ${carId} has reached its destination.`);
-            delete routeCache[carId];
-
-            // Determine the new status based on the current status of the car
-            const newStatus = car.status === "toUser" ? "waiting" : car.status === "ride" ? "free" : car.status;
-
-            await carsCollection.updateOne(
-                {_id: car._id},
-                {$set: {status: newStatus}}
-            );
-            return;
-        }
-
         console.log(`Car ${carId} is moving...`);
         const start = car.currentLocation;
         const end = coordinates[currentSegmentIndex+1];
@@ -128,7 +158,7 @@ async function updateCarLocation() {
 
         if (totalDistanceCovered >= segmentDistance) {
             currentSegmentIndex += 1;
-            totalDistanceCovered -= segmentDistance;
+            totalDistanceCovered = 0;
         }
         // Update state in the Map for the next iteration
         carStates.set(carId, { currentSegmentIndex, totalDistanceCovered });

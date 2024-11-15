@@ -6,8 +6,6 @@ const { decode } = polylineCodec;
 const username = encodeURIComponent("eksmith26");
 const password = encodeURIComponent("Grace27$$");  // URL encoded password
 const dbName = "Simu8";
-const API_KEY = "AIzaSyCDNOcShPLnjKVBPl5CGFWoGV6IzW3QDy8";
-
 const uri = `mongodb+srv://${username}:${password}@autosimulate.7qsly.mongodb.net/?retryWrites=true&w=majority&appName=AutoSimulate`;
 
 const client = new MongoClient(uri, {
@@ -121,6 +119,57 @@ export async function freeUpCar(carId) {
     } catch (err) {
         console.error("An error occurred:", err);
     } finally {
+        await client.close();
+    }
+}
+
+
+// stores the coordinates of the rectangle which has traffic in the database
+export async function generateTraffic(minLatLng, maxLatLng){
+    try{
+        await client.connect();
+        const database = client.db(dbName);
+        const traffic = database.collection('Traffic');
+        // Calculate the other two corners of the rectangle
+        const topLeft = { lat: maxLatLng.lat, lng: minLatLng.lng };
+        const bottomRight = { lat: minLatLng.lat, lng: maxLatLng.lng };
+        // Create a rectangle object to store in the database
+        const rectangleData = {
+            bottomLeft: minLatLng,       // Bottom-left corner
+            bottomRight: bottomRight,  // Bottom-right corner
+            topLeft: topLeft,        // Top-left corner
+            topRight: maxLatLng     // Top-right corner
+        };
+        // Insert the rectangle into the database
+        const result = await traffic.insertOne(rectangleData);
+        console.log("Traffic generated successfully");
+    }
+    catch(err){
+        console.error("An error occurred:", err);
+    }
+    finally{
+        await client.close();
+    }
+}
+
+// function to remove traffic from the database
+export async function removeTraffic(minLatLng, maxLatLng){
+    try{
+        await client.connect();
+        const database = client.db(dbName);
+        const traffic = database.collection('Traffic');
+        // Define a query to match traffic entries with the specified coordinates
+        const query = {
+            minLatLng: minLatLng,
+            maxLatLng: maxLatLng
+        };
+        const result = await traffic.deleteMany(query);
+        console.log("Traffic removed successfully");
+    }
+    catch(err){
+        console.error("An error occurred:", err);
+    }
+    finally{
         await client.close();
     }
 }
