@@ -111,51 +111,93 @@ async function updateCarLocation() {
     const database = client.db(dbName);
     const carsCollection = database.collection('Autonomous Cars');
 
-    const query = {status: {$in: ["toUser", "ride"]}};
+    // Query for cars that are currently moving (toUser or ride status)
+    const query = { status: { $in: ["toUser", "ride"] } };
     const carsInUse = await carsCollection.find(query).toArray();
 
     for (let car of carsInUse) {
-        let carId = car._id.toString(); // Ensure consistent ID tracking
+        const carId = car._id.toString();
 
-        // Initialize state for each car if it doesn't exist
+        // Initialize state for the car if not already set
         if (!carStates.has(carId)) {
             carStates.set(carId, {
                 currentSegmentIndex: 0,
-                totalDistanceCovered: 0
+                segmentDistanceCovered: 0,
             });
         }
 
         let carState = carStates.get(carId);
 
-        // Fetch route if not cached
+        // Fetch and cache the route if not already done
         if (!routeCache[carId]) {
             console.log(`Fetching route for car ${carId}`);
             let routeInfo = await fetchPolyline(`${car.currentLocation[0]},${car.currentLocation[1]}`, `${car.Destination[0]},${car.Destination[1]}`);
+
+            if (routeInfo === "error") {
+                console.error(`Failed to fetch route for car ${carId}`);
+                continue;
+            }
+
             routeCache[carId] = {
-                coordinates: routeInfo[0],
-                speed: routeInfo[1]
+                coordinates: routeInfo[0], // Decoded polyline coordinates
+                speed: routeInfo[1],       // Speed in meters per second
             };
         }
 
-        const {coordinates, speed} = routeCache[carId];
-        let {currentSegmentIndex, totalDistanceCovered} = carState;
-
-        console.log(`Car ${carId} is moving...`);
-        const start = car.currentLocation;
-        const end = coordinates[currentSegmentIndex+1];
-        console.log(`Start: ${start}, End: ${end}`);
+        const { coordinates, speed } = routeCache[carId];
+        const { currentSegmentIndex, segmentDistanceCovered } = carState;
+        
+        // Current and next coordinates
+        const start = coordinates[currentSegmentIndex];
+        const end = coordinates[currentSegmentIndex + 1];
         const segmentDistance = haversineDistance(start, end);
 
-        totalDistanceCovered += speed * 1; // Assuming 1-second intervals
-        const [newLat, newLng] = moveCarProgressively(start, end, totalDistanceCovered, segmentDistance);
-        car.currentLocation = [Number(newLat.toFixed(7)), Number(newLng.toFixed(7))];
-        console.log(`Car ${carId} position: (${newLat}, ${newLng})`);
+        // Update distance covered in the current segment
+        const distanceToMove = speed; // Distance to move in this interval
+        let updatedDistance = segmentDistanceCovered + distanceToMove;
+
+        // Handle segment transitions
+        let newSegmentIndex = currentSegmentIndex;
+        while (updatedDistance >= segmentDistance) {
+            updatedDistance -= segmentDistance;
+            newSegmentIndex++;
+
+            // If we've reached the final segment
+            if (newSegmentIndex >= coordinates.length - 1) {
+                console.log(`Car ${carId} has reached its destination.`);
+                delete routeCache[carId];
+                carStates.delete(carId);
+
+                const newStatus = car.status === "toUser" ? "waiting" : "free";
+                await carsCollection.updateOne(
+                    { _id: car._id },
+                    { $set: { status: newStatus } }
+                );
+                if (newStatus == 'free') {
+                    return;
+                }
+                continue;
+              
+            }
+        }
+        
+        // Calculate the new position
+        const newStart = coordinates[newSegmentIndex];
+        const newEnd = coordinates[newSegmentIndex + 1];
+        const newSegmentDistance = haversineDistance(newStart, newEnd);
+        const ratio = updatedDistance / newSegmentDistance;
+        const [newLat, newLng] = interpolate(newStart, newEnd, ratio);
+
+        // Update the car's location
+        car.currentLocation = [newLat, newLng];
+        console.log(`Car ${carId} moved to: (${newLat}, ${newLng})`);
 
         await carsCollection.updateOne(
-            {_id: car._id},
-            {$set: {currentLocation: car.currentLocation}}
+            { _id: car._id },
+            { $set: { currentLocation: car.currentLocation } }
         );
 
+<<<<<<< HEAD
         if (totalDistanceCovered >= segmentDistance) {
             currentSegmentIndex += 1;
             totalDistanceCovered = 0;
@@ -163,6 +205,13 @@ async function updateCarLocation() {
         // Update state in the Map for the next iteration
         carStates.set(carId, { currentSegmentIndex, totalDistanceCovered });
 
+=======
+        // Update car state for the next iteration
+        carStates.set(carId, {
+            currentSegmentIndex: newSegmentIndex,
+            segmentDistanceCovered: updatedDistance,
+        });
+>>>>>>> 320fbac497154443e5c53047545569f40b2e2b9b
     }
 }
 
