@@ -75,13 +75,11 @@ async function checkTraffic(carLocation) {
 
         // Check if the car is within any of the rectangles
         for (const rectangle of rectangles) {
-            const { bottomLeft, bottomRight, topLeft, topRight } = rectangle;
+            const { minLatLng, maxLatLng } = rectangle;
 
-            // Calculate boundaries
-            const minLat = bottomLeft.lat;
-            const maxLat = topLeft.lat;
-            const minLng = bottomLeft.lng;
-            const maxLng = bottomRight.lng;
+            // Parse the minLatLng and maxLatLng string into separate lat, lng values
+            const [minLat, minLng] = minLatLng.split(",").map(parseFloat);
+            const [maxLat, maxLng] = maxLatLng.split(",").map(parseFloat);
 
             // Check if the car's location is within the bounds of the current rectangle
             if (
@@ -98,8 +96,6 @@ async function checkTraffic(carLocation) {
     } catch (err) {
         console.error("An error occurred while checking traffic:", err);
         return false;
-    } finally {
-        await client.close();
     }
 }
 
@@ -138,8 +134,7 @@ async function updateCarLocation() {
                 { _id: car._id },
                 {
                     $set: { // Use `$set` to update fields
-                        polyline: routeInfo[2],
-                        speed: routeInfo[1],
+                        polyline: routeInfo[2]
                     }
                 }
             );
@@ -189,9 +184,15 @@ async function updateCarLocation() {
                 const newStatus = car.status === "toUser" ? "waiting" : "free";
                 await carsCollection.updateOne(
                     { _id: car._id },
-                    { $set: { status: newStatus } }
+                    {
+                        $set: { // Use `$set` to update fields
+                            status: newStatus,
+                            polyline: null,
+                            speed: 0
+                        }
+                    }
                 );
-                if (newStatus == 'free') {
+                if (newStatus === 'free') {
                     return;
                 }
                 continue;
@@ -212,7 +213,11 @@ async function updateCarLocation() {
 
         await carsCollection.updateOne(
             { _id: car._id },
-            { $set: { currentLocation: car.currentLocation } }
+            { $set: {
+                        currentLocation: car.currentLocation,
+                        speed: speed
+                }
+            }
         );
 
         // Update car state for the next iteration

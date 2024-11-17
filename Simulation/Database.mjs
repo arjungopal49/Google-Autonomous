@@ -14,7 +14,15 @@ const client = new MongoClient(uri, {
         deprecationErrors: true,
     }
 });
+let isConnected = false;
 
+async function connectClient() {
+    if (!isConnected) {
+        await client.connect();
+        isConnected = true;
+        console.log("Connected to database");
+    }
+}
 // Create Car object which will be returned to the backend with the results from the query
 let car = {
     id: null,
@@ -26,7 +34,7 @@ let car = {
 // return an array of all free cars to backend
 export async function query() {
     try {
-        await client.connect();  // Ensure connection is established
+        await connectClient();  // Ensure connection is established
         const database = client.db(dbName);
         const cars = database.collection('Autonomous Cars');
         const query = {status: "free"};
@@ -37,16 +45,13 @@ export async function query() {
         return freeCars;
     } catch (err) {
         console.error("An error occurred:", err);
-    } finally {
-        // Only close the client when you're done with all operations
-        await client.close();
     }
 }
 
 // function to update car location picked by backend for the ride
 export async function updateCar(carId, destinationX, destinationY, status) {
     try {
-        await client.connect();
+        await connectClient();
         const database = client.db(dbName);
         const cars = database.collection('Autonomous Cars');
         console.log(carId);
@@ -73,31 +78,26 @@ export async function updateCar(carId, destinationX, destinationY, status) {
 
     } catch (err) {
         console.error("An error occurred:", err);
-    } finally {
-        await client.close();
     }
 }
 
 // return an array of all cars (free and used)
 export async function getAllCars() {
     try {
-        await client.connect();  // Ensure connection is established
+        await connectClient(); // Ensure connection is established
         const database = client.db(dbName);
         const cars = database.collection('Autonomous Cars');
         const allCars = await cars.find({}).toArray();
         return allCars;
     } catch (err) {
         console.error("An error occurred:", err);
-    } finally {
-        // Only close the client when you're done with all operations
-        await client.close();
     }
 }
 
 // function to free up car after the ride is completed. takes in carId and change the status to free
 export async function freeUpCar(carId) {
     try {
-        await client.connect();
+        await connectClient();
         const database = client.db(dbName);
         const cars = database.collection('Autonomous Cars');
         //console.log(carId);
@@ -117,8 +117,6 @@ export async function freeUpCar(carId) {
         }
     } catch (err) {
         console.error("An error occurred:", err);
-    } finally {
-        await client.close();
     }
 }
 
@@ -126,18 +124,13 @@ export async function freeUpCar(carId) {
 // stores the coordinates of the rectangle which has traffic in the database
 export async function generateTraffic(minLatLng, maxLatLng){
     try{
-        await client.connect();
+        await connectClient();
         const database = client.db(dbName);
         const traffic = database.collection('Traffic');
-        // Calculate the other two corners of the rectangle
-        const topLeft = { lat: maxLatLng.lat, lng: minLatLng.lng };
-        const bottomRight = { lat: minLatLng.lat, lng: maxLatLng.lng };
         // Create a rectangle object to store in the database
         const rectangleData = {
-            bottomLeft: minLatLng,       // Bottom-left corner
-            bottomRight: bottomRight,  // Bottom-right corner
-            topLeft: topLeft,        // Top-left corner
-            topRight: maxLatLng     // Top-right corner
+            minLatLng: minLatLng,       // Bottom-left corner
+            maxLatLng: maxLatLng        // Top-right corner
         };
         // Insert the rectangle into the database
         const result = await traffic.insertOne(rectangleData);
@@ -146,15 +139,12 @@ export async function generateTraffic(minLatLng, maxLatLng){
     catch(err){
         console.error("An error occurred:", err);
     }
-    finally{
-        await client.close();
-    }
 }
 
 // function to remove traffic from the database
 export async function removeTraffic(minLatLng, maxLatLng) {
     try {
-        await client.connect();
+        await connectClient();
         const database = client.db(dbName);
         const traffic = database.collection('Traffic');
         // Define a query to match traffic entries with the specified coordinates
@@ -166,8 +156,6 @@ export async function removeTraffic(minLatLng, maxLatLng) {
         console.log("Traffic removed successfully");
     } catch (err) {
         console.error("An error occurred:", err);
-    } finally {
-        await client.close();
     }
 }
 export async function setSpeed(worldSpeed) {
@@ -175,3 +163,31 @@ export async function setSpeed(worldSpeed) {
     let howFastWorldMoves = 1000 / worldSpeed;
     worldSpeed = howFastWorldMoves;
 }
+
+// Graceful shutdown for closing MongoDB client
+function setupGracefulShutdown() {
+    process.on('SIGINT', async () => {
+        try {
+            await client.close();
+            console.log("MongoDB client closed gracefully on SIGINT");
+        } catch (err) {
+            console.error("Error during MongoDB client shutdown", err);
+        } finally {
+            process.exit(0);
+        }
+    });
+
+    process.on('SIGTERM', async () => {
+        try {
+            await client.close();
+            console.log("MongoDB client closed gracefully on SIGTERM");
+        } catch (err) {
+            console.error("Error during MongoDB client shutdown", err);
+        } finally {
+            process.exit(0);
+        }
+    });
+}
+
+// Call the setup function to ensure graceful shutdown
+setupGracefulShutdown();

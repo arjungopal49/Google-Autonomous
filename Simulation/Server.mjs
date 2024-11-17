@@ -53,12 +53,18 @@ app.post('/free-car', async (req, res) => {
   }
 });
 
+// accepts a JSON object with the following properties:
+// {
+//   "minLatLng": "43.072539203775506, -89.40189507477501",
+//     "maxLatLng": "43.07167917359398, -89.40447893975805"
+// }
+
 //Endpoint to generate traffic
 app.get('/generate-traffic', async (req, res) => {
-  const { traffic } = req.body;
+  const { minLatLng, maxLatLng } = req.body;
   try {
     // Generate traffic
-    const result = await generateTraffic(traffic);
+    const result = await generateTraffic(minLatLng, maxLatLng);
     res.status(200).send();// Send 200 status code if the traffic is generated successfully
   } catch (error) {
     res.status(500).json({ error: "Error while generating traffic." });
@@ -67,10 +73,10 @@ app.get('/generate-traffic', async (req, res) => {
 
 // Endpoint to remove traffic
 app.get('/remove-traffic', async (req, res) => {
-    const { traffic } = req.body;
+  const { minLatLng, maxLatLng } = req.body;
   try {
     // Delete traffic
-    const result = await removeTraffic(traffic);
+    const result = await removeTraffic(minLatLng, maxLatLng);
     res.status(200).send();// Send 200 status code if the traffic is deleted successfully
   } catch (error) {
     res.status(500).json({ error: "Error while deleting traffic." });
@@ -81,7 +87,7 @@ app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
 
-app.post('/set_Speed', async (req, res) => {
+app.get('/set_speed', async (req, res) => {
   const { speed } = req.body;
   try {
     const result = await setSpeed(speed);
