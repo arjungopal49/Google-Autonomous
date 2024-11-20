@@ -4,7 +4,8 @@ import RideRequestForm from './components/RideRequestForm';
 import MiniDrawer from './components/Sidebar';
 import MapComponent from './components/MapComponent';
 import AssignedVehicle from './components/AssignedVehicle';
-import CarArrived from './components/CarArrived';
+import Popup from './components/Popup';
+import SafetyFeatures from './components/SafetyFeatures';
 
 function App() {
   const [vehicle, setVehicle] = useState(null);
@@ -15,7 +16,8 @@ function App() {
   const [carLocation, setCarLocation] = useState(null);
   const [carDest, setCarDest] = useState(null);
   const [allCars, setAllCars] = useState([]);
-  const [showCarArrived, setShowCarArrived] = useState(false);
+  const [showPopup, setShowPopup] = useState(false);
+  const [showSafetyFeatures, setShowSafetyFeatures] = useState(false); // New state for safety features card
 
   useEffect(() => {
     async function getAllCars() {
@@ -43,7 +45,7 @@ function App() {
         setCarDest(progress.car.Destination);
         if (progress.car.status === 'waiting') {
           setEncodedPolyline(null);
-          setShowCarArrived(true);
+          setShowPopup(true); // Show popup when the car arrives
         } else {
           setEncodedPolyline(progress['remaining-route']);
         }
@@ -103,7 +105,8 @@ function App() {
       { method: 'POST' }
     );
     console.log(await response.json());
-    setShowCarArrived(false);
+    setShowPopup(false); // Close the popup when "I'm in the Car" is pressed
+    setShowSafetyFeatures(true); // Show safety features card
   };
 
   return (
@@ -118,7 +121,6 @@ function App() {
             allCars={allCars}
           />
 
-          {/* Conditional rendering for RideRequestForm and AssignedVehicle */}
           {!vehicle && (
             <div className="overlay-form">
               <RideRequestForm onSubmit={handleRideRequest} />
@@ -132,14 +134,17 @@ function App() {
                 arrivalTime={arrivalTime}
                 origin={rideOrigin}
                 destination={rideDestination}
+                startRide={handleStartRide}
               />
             </div>
           )}
 
-          {showCarArrived && (
-            <div>
-              <CarArrived startRide={handleStartRide} />
-            </div>
+          {showPopup && (
+            <Popup message="Your vehicle has arrived!" />
+          )}
+
+          {showSafetyFeatures && (
+            <SafetyFeatures />
           )}
         </div>
       </div>

@@ -45,9 +45,9 @@ const MapComponent = ({ encodedPolyline, carLocation, carDest, allCars }) => {
       polylineRef.current = new window.google.maps.Polyline({
         path: polylinePath,
         geodesic: true,
-        strokeColor: "#FF0000",
+        strokeColor: "#4285F4",
         strokeOpacity: 1.0,
-        strokeWeight: 4,
+        strokeWeight: 6,
       });
       polylineRef.current.setMap(mapRef.current);
     }

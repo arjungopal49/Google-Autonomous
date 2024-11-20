@@ -8,10 +8,13 @@ import Typography from '@mui/material/Typography';
 import CardMedia from '@mui/material/CardMedia';
 import logo from '../Images/Car.png';
 
-const AssignedVehicle = ({ vehicle, arrivalTime, origin, destination }) => {
+const AssignedVehicle = ({ vehicle, arrivalTime, origin, destination, startRide }) => {
+  // Determine button state based on vehicle's arrival status
+  const isCarArrived = vehicle.status === 'waiting';
+
   return (
     <Box className="assigned-vehicle-overlay">
-      <Card elevation={0} sx={{ width: 500, display: 'flex', flexDirection: 'column', alignItems: 'left' }}>
+      <Card elevation={0} sx={{ width: 400, display: 'flex', flexDirection: 'column', alignItems: 'left' }}>
         {/* CardMedia */}
         <Box sx={{ display: 'flex', alignItems: 'left' }}>
           <CardMedia
@@ -22,10 +25,10 @@ const AssignedVehicle = ({ vehicle, arrivalTime, origin, destination }) => {
           />
           <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, alignItems: 'left' }}>
             <CardContent>
-            <Typography
-          variant="h5" gutterBottom
-          sx={{ fontWeight: 'bold', color: '#4A90E2', textAlign: 'left'}}
-        >
+              <Typography
+                variant="h5" gutterBottom
+                sx={{ fontWeight: 'bold', color: '#4A90E2', textAlign: 'left'}}
+              >
                 {vehicle.status === 'ride' ? 'Ride In Progress' : 'Assigned Vehicle'}
               </Typography>
               <Typography variant="body1" align='left' sx={{ mb: 1.5 }}>
@@ -38,11 +41,27 @@ const AssignedVehicle = ({ vehicle, arrivalTime, origin, destination }) => {
                 <strong>Origin:</strong> {origin}
               </Typography>
               <Typography variant="body1" align='left' sx={{ mb: 1.5 }}>
-              <strong>Destination:</strong> {destination}
+                <strong>Destination:</strong> {destination}
               </Typography>
             </CardContent>
           </Box>
         </Box>
+        <CardActions>
+          <Button
+            onClick={startRide}
+            variant="contained"
+            size="small"
+            disabled={!isCarArrived}
+            sx={{
+              backgroundColor: isCarArrived ? '#007BFF' : '#CCCCCC',
+              color: isCarArrived ? '#FFFFFF' : '#666666',
+              mt: 2,
+              mx: 'auto'
+            }}
+          >
+            I'm in the Car
+          </Button>
+        </CardActions>
       </Card>
     </Box>
   );
