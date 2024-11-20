@@ -1,4 +1,3 @@
-// AssignedVehicle.js
 import React from 'react';
 import Box from '@mui/material/Box';
 import Card from '@mui/material/Card';
@@ -7,35 +6,43 @@ import CardContent from '@mui/material/CardContent';
 import Button from '@mui/material/Button';
 import Typography from '@mui/material/Typography';
 import CardMedia from '@mui/material/CardMedia';
-import logo from '../Images/Car.png'; 
+import logo from '../Images/Car.png';
 
-const AssignedVehicle = ({ vehicle, arrivalTime }) => {
+const AssignedVehicle = ({ vehicle, arrivalTime, origin, destination }) => {
   return (
     <Box className="assigned-vehicle-overlay">
-      <Card elevation={0}>
-        <CardMedia
-          component="img"
-          height="150"
-          image={logo} // Use the imported vehicle image
-          alt="Assigned Vehicle"
-        />
-        <CardContent>
-          <Typography variant="h5" component="div" gutterBottom>
-            {vehicle.status === "ride" ? "Ride In Progress": "Assigned Vehicle"}
-          </Typography>
-          <Typography variant="body2" sx={{ mb: 1.5 }}>
-            <strong>Vehicle ID:</strong> {vehicle._id}
-          </Typography>
-          <Typography variant="body2" sx={{ mb: 1.5 }}>
-            <strong>Arrival Time:</strong> {arrivalTime ? `${arrivalTime} ` : 'N/A'}
-          </Typography>
-          <Typography variant="body2" sx={{ mb: 1.5 }}>
-            <strong>Current Location:</strong> {vehicle.currentLocation.join(', ')}
-          </Typography>
-        </CardContent>
-        <CardActions>
-          <Button variant="contained" type="submit" size="small" sx={{ mt: 6, display: 'block', margin: '0 auto' }}>Track Vehicle</Button>
-        </CardActions>
+      <Card elevation={0} sx={{ width: 500, display: 'flex', flexDirection: 'column', alignItems: 'left' }}>
+        {/* CardMedia */}
+        <Box sx={{ display: 'flex', alignItems: 'left' }}>
+          <CardMedia
+            component="img"
+            sx={{ width: 150, height: 150, objectFit: 'cover', marginRight: 2, marginTop: 5 }}
+            image={logo}
+            alt="Assigned Vehicle"
+          />
+          <Box sx={{ display: 'flex', flexDirection: 'column', flex: 1, alignItems: 'left' }}>
+            <CardContent>
+            <Typography
+          variant="h5" gutterBottom
+          sx={{ fontWeight: 'bold', color: '#4A90E2', textAlign: 'left'}}
+        >
+                {vehicle.status === 'ride' ? 'Ride In Progress' : 'Assigned Vehicle'}
+              </Typography>
+              <Typography variant="body1" align='left' sx={{ mb: 1.5 }}>
+                <strong>Vehicle ID:</strong> {vehicle._id}
+              </Typography>
+              <Typography variant="body1" align='left' sx={{ mb: 1.5 }}>
+                <strong>Arrival Time:</strong> {arrivalTime || 'N/A'}
+              </Typography>
+              <Typography variant="body1" align='left' sx={{ mb: 1.5 }}>
+                <strong>Origin:</strong> {origin}
+              </Typography>
+              <Typography variant="body1" align='left' sx={{ mb: 1.5 }}>
+              <strong>Destination:</strong> {destination}
+              </Typography>
+            </CardContent>
+          </Box>
+        </Box>
       </Card>
     </Box>
   );
