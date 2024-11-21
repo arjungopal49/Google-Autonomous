@@ -29,25 +29,25 @@ const MapComponent = ({ encodedPolyline, carLocation, carDest, allCars }) => {
     };
 
     loadScript();
-  }, []); // Run only once to initialize the map
+  }, []);
 
   useEffect(() => {
     if (mapRef.current && !encodedPolyline) {
       if (polylineRef.current) {
-        polylineRef.current.setMap(null); // Remove previous polyline if it exists
+        polylineRef.current.setMap(null); 
       }
     }
     if (mapRef.current && encodedPolyline) {
       if (polylineRef.current) {
-        polylineRef.current.setMap(null); // Remove previous polyline if it exists
+        polylineRef.current.setMap(null); 
       }
       const polylinePath = window.google.maps.geometry.encoding.decodePath(encodedPolyline);
       polylineRef.current = new window.google.maps.Polyline({
         path: polylinePath,
         geodesic: true,
-        strokeColor: "#FF0000",
+        strokeColor: "#4285F4",
         strokeOpacity: 1.0,
-        strokeWeight: 4,
+        strokeWeight: 6,
       });
       polylineRef.current.setMap(mapRef.current);
     }
@@ -55,12 +55,14 @@ const MapComponent = ({ encodedPolyline, carLocation, carDest, allCars }) => {
 
   useEffect(() => {
     if (mapRef.current) {
-      // Clear existing markers
       markersRef.current.forEach(marker => marker.setMap(null));
       markersRef.current = [];
 
       if (carLocation && carDest) {
-        const image = "https://developers.google.com/maps/documentation/javascript/examples/full/images/beachflag.png";
+        const image ={
+          url: "https://cdn.prod.website-files.com/62c5e0898dea0b799c5f2210/62e8212acc540f291431bad2_location-icon.png",
+          scaledSize: new window.google.maps.Size(32, 32),
+        };
         const destinationMarker = new window.google.maps.Marker({
           position: { lat: carDest[0], lng: carDest[1] },
           map: mapRef.current,
