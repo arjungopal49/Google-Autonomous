@@ -87,7 +87,7 @@ app.listen(port, () => {
   console.log(`Server is running on port ${port}`);
 });
 
-app.get('/set_speed', async (req, res) => {
+app.get('/set-speed', async (req, res) => {
   const { speed } = req.body;
   try {
     const result = await setSpeed(speed);
