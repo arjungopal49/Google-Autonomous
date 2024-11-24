@@ -56,9 +56,9 @@ function App() {
 
     let intervalId;
     if (carLocation) {
-      intervalId = setInterval(trackProgress, 5000);
+      intervalId = setInterval(trackProgress, 1000);
     } else {
-      intervalId = setInterval(getAllCars, 5000);
+      intervalId = setInterval(getAllCars, 1000);
     }
     return () => clearInterval(intervalId);
   }, [carLocation, vehicle]);

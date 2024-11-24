@@ -2,8 +2,8 @@ import React, { useEffect, useRef } from 'react';
 import carGreen from '../Images/carGreen.png';
 import carRed from '../Images/carRed.png';
 
-const MapComponent = ({ encodedPolyline, carLocation, carDest, allCars }) => {
-  const mapRef = useRef(null); // Store map instance
+const MapComponentAdmin = ({ encodedPolyline, carLocation, carDest, allCars }) => {
+  const mapRef = useRef(null);  // Store map instance
   const polylineRef = useRef(null); // Store polyline instance
   const markersRef = useRef([]); // Store markers
 
@@ -55,49 +55,36 @@ const MapComponent = ({ encodedPolyline, carLocation, carDest, allCars }) => {
 
   useEffect(() => {
     if (mapRef.current) {
+      // Clear existing markers
       markersRef.current.forEach(marker => marker.setMap(null));
       markersRef.current = [];
 
-      if (carLocation && carDest) {
-        const image = {
-          url: "https://cdn.prod.website-files.com/62c5e0898dea0b799c5f2210/62e8212acc540f291431bad2_location-icon.png",
-          scaledSize: new window.google.maps.Size(32, 32),
-        };
-        const destinationMarker = new window.google.maps.Marker({
-          position: { lat: carDest[0], lng: carDest[1] },
-          map: mapRef.current,
-          icon: image,
-        });
-        const carMarker = new window.google.maps.Marker({
-          position: { lat: carLocation[0], lng: carLocation[1] },
-          map: mapRef.current,
-          icon: {
-            url: carRed,
-            scaledSize: new window.google.maps.Size(60, 50)
-          }
-        });
-        markersRef.current.push(destinationMarker);
-        markersRef.current.push(carMarker);
-        mapRef.current.setCenter({ lat: carLocation[0], lng: carLocation[1] }); // Center map on car location
-      } else if (allCars) {
-        allCars
-          .filter(car => car.status === 'free') // Only include cars that are free
-          .forEach(car => {
-            const carMarker = new window.google.maps.Marker({
-              position: { lat: car.currentLocation[0], lng: car.currentLocation[1] },
-              map: mapRef.current,
-              icon: {
-                url: carGreen,
-                scaledSize: new window.google.maps.Size(60, 50)
-              }
-            });
-            markersRef.current.push(carMarker);
+      // Show all cars
+      if (allCars) {
+        allCars.forEach(car => {
+          const carMarker = new window.google.maps.Marker({
+            position: { lat: car.currentLocation[0], lng: car.currentLocation[1] },
+            map: mapRef.current,
+            icon: {
+              url: car.status === 'free' ? carGreen : carRed,
+              scaledSize: new window.google.maps.Size(60, 50),
+            },
           });
+          markersRef.current.push(carMarker);
+        });
+      }
+
+      // Optionally, center the map around the first car (if available)
+      if (allCars.length > 0) {
+        mapRef.current.setCenter({
+          lat: allCars[0].currentLocation[0],
+          lng: allCars[0].currentLocation[1],
+        });
       }
     }
-  }, [carLocation, allCars]); // Update markers when carLocation or allCars changes
+  }, [allCars]); // Update markers whenever allCars changes
 
-  return <div id="map" style={{ width: '95vw', height: '90vh' }}></div>;
+  return <div id="map" style={{ width: '50vw', height: '90vh' }}></div>;
 };
 
-export default MapComponent;
+export default MapComponentAdmin;
