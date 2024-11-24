@@ -1,9 +1,11 @@
 import express from "./node_modules/express/index.js";
 import {setSpeed, freeUpCar, generateTraffic, getAllCars, query, removeTraffic, updateCar} from "./Database.mjs";
+import cors from "cors"; // Import the CORS package
 
 const app = express();
 const port = 4000;
 
+app.use(cors());
 // Middleware to parse JSON
 app.use(express.json());
 

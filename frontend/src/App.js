@@ -6,6 +6,8 @@ import MapComponent from './components/MapComponent';
 import AssignedVehicle from './components/AssignedVehicle';
 import Popup from './components/Popup';
 import SafetyFeatures from './components/SafetyFeatures';
+import AdminDashboard from './components/AdminDashboard'; // Import AdminDashboard component
+import { BrowserRouter as Router, Route, Routes } from 'react-router-dom'; // Import React Router
 
 function App() {
   const [vehicle, setVehicle] = useState(null);
@@ -110,45 +112,54 @@ function App() {
   };
 
   return (
-    <div className="App">
-      <div className="app-container">
-        <MiniDrawer />
-        <div className="map-wrapper">
-          <MapComponent
-            encodedPolyline={encodedPolyline}
-            carLocation={carLocation}
-            carDest={carDest}
-            allCars={allCars}
+    <Router>
+      <div className="App">
+        <Routes>
+          {/* Define route for AdminDashboard */}
+          <Route path="/admin-dashboard" element={<AdminDashboard />} />
+
+          {/* Define route for the main application */}
+          <Route
+            path="/"
+            element={
+              <div className="app-container">
+                <MiniDrawer />
+                <div className="map-wrapper">
+                  <MapComponent
+                    encodedPolyline={encodedPolyline}
+                    carLocation={carLocation}
+                    carDest={carDest}
+                    allCars={allCars}
+                  />
+
+                  {!vehicle && (
+                    <div className="overlay-form">
+                      <RideRequestForm onSubmit={handleRideRequest} />
+                    </div>
+                  )}
+
+                  {vehicle && (
+                    <div>
+                      <AssignedVehicle
+                        vehicle={vehicle}
+                        arrivalTime={arrivalTime}
+                        origin={rideOrigin}
+                        destination={rideDestination}
+                        startRide={handleStartRide}
+                      />
+                    </div>
+                  )}
+
+                  {showPopup && <Popup message="Your vehicle has arrived!" />}
+
+                  {showSafetyFeatures && <SafetyFeatures />}
+                </div>
+              </div>
+            }
           />
-
-          {!vehicle && (
-            <div className="overlay-form">
-              <RideRequestForm onSubmit={handleRideRequest} />
-            </div>
-          )}
-
-          {vehicle && (
-            <div>
-              <AssignedVehicle
-                vehicle={vehicle}
-                arrivalTime={arrivalTime}
-                origin={rideOrigin}
-                destination={rideDestination}
-                startRide={handleStartRide}
-              />
-            </div>
-          )}
-
-          {showPopup && (
-            <Popup message="Your vehicle has arrived!" />
-          )}
-
-          {showSafetyFeatures && (
-            <SafetyFeatures />
-          )}
-        </div>
+        </Routes>
       </div>
-    </div>
+    </Router>
   );
 }
 
