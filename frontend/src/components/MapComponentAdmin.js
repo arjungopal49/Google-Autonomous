@@ -2,10 +2,11 @@ import React, { useEffect, useRef } from 'react';
 import carGreen from '../Images/carGreen.png';
 import carRed from '../Images/carRed.png';
 
-const MapComponentAdmin = ({ encodedPolyline, carLocation, carDest, allCars }) => {
+const MapComponentAdmin = ({ encodedPolyline, carLocation, carDest, allCars, allTraffic }) => {
   const mapRef = useRef(null);  // Store map instance
   const polylineRef = useRef(null); // Store polyline instance
   const markersRef = useRef([]); // Store markers
+  const trafficBoxesRef = useRef([]); // store traffic boxes
 
   useEffect(() => {
     const initMap = () => {
@@ -59,6 +60,10 @@ const MapComponentAdmin = ({ encodedPolyline, carLocation, carDest, allCars }) =
       markersRef.current.forEach(marker => marker.setMap(null));
       markersRef.current = [];
 
+      // Clear existing traffic boxes
+      trafficBoxesRef.current?.forEach(box => box.setMap(null));
+      trafficBoxesRef.current = [];
+
       // Show all cars
       if (allCars) {
         allCars.forEach(car => {
@@ -81,8 +86,30 @@ const MapComponentAdmin = ({ encodedPolyline, carLocation, carDest, allCars }) =
           lng: allCars[0].currentLocation[1],
         });
       }
+
+      // Show all traffic boxes
+      if (allTraffic) {
+        allTraffic.forEach(traffic => {
+          const [minLat, minLng] = traffic.minLatLng.split(',').map(coord => parseFloat(coord.trim()));
+          const [maxLat, maxLng] = traffic.maxLatLng.split(',').map(coord => parseFloat(coord.trim()));
+          const trafficBox = new window.google.maps.Rectangle({
+            bounds: {
+              north: maxLat,
+              south: minLat,
+              east: maxLng,
+              west: minLng,
+            },
+            map: mapRef.current,
+            fillColor: 'rgba(255, 0, 0, 0.4)',
+            strokeColor: 'red',
+            strokeOpacity: 0.8,
+            strokeWeight: 2,
+          });
+          trafficBoxesRef.current.push(trafficBox);
+        });
+      }
     }
-  }, [allCars]); // Update markers whenever allCars changes
+  }, [allCars, allTraffic]); // Update markers whenever allCars changes
 
   return <div id="map" style={{ width: '50vw', height: '90vh' }}></div>;
 };

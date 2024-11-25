@@ -1,5 +1,5 @@
 import express from "./node_modules/express/index.js";
-import {setSpeed, freeUpCar, generateTraffic, getAllCars, query, removeTraffic, updateCar} from "./Database.mjs";
+import {setSpeed, freeUpCar, generateTraffic, getAllCars, query, removeTraffic, updateCar, getAllTraffic} from "./Database.mjs";
 import cors from "cors"; // Import the CORS package
 
 const app = express();
@@ -25,9 +25,9 @@ app.get('/request-car', async (req, res) => {
 
 // Endpoint to update car's location
 app.post('/update-car', async (req, res) => {
-  const { carId, destinationX, destinationY, status } = req.body; // Expecting { destinationX, destinationY } from backend
+  const { carId, x, y, status, locType } = req.body; // Expecting { destinationX, destinationY } from backend
   try {
-    const result = await updateCar(carId, destinationX, destinationY, status);
+    const result = await updateCar(carId, x, y, status, locType);
     res.status(200).send(); // Send 200 status code if the car location is updated successfully
   } catch (error) {
     res.status(500).json({ error: "Error while updating car." });
@@ -96,6 +96,16 @@ app.get('/set_speed', async (req, res) => {
       res.status(200).send();// Send 200 status code if the car is freed successfully
   } catch (error) {
     res.status(500).json({ error: "Error while freeing up car." });
+  }
+});
+
+// Endpoint to get the list of all traffic
+app.get('/all-traffic', async (req, res) => {
+  try {
+    const traffic = await getAllTraffic();
+    res.status(200).json(traffic); // Send the traffic details as JSON response
+  } catch (error) {
+    res.status(500).json({ error: "Error while traffic car details." });
   }
 });
 

@@ -49,24 +49,36 @@ export async function query() {
 }
 
 // function to update car location picked by backend for the ride
-export async function updateCar(carId, destinationX, destinationY, status) {
+export async function updateCar(carId, x, y, status, locType) {
     try {
         await connectClient();
         const database = client.db(dbName);
         const cars = database.collection('Autonomous Cars');
         console.log(carId);
         const filter = {_id: new ObjectId(carId)};
-        destinationX = Number(destinationX)
-        destinationY = Number(destinationY)
-        destinationX = Number(destinationX.toFixed(7));
-        destinationY = Number(destinationY.toFixed(7));
-        const updateDoc = {
-            $set: {
-                "Destination.0": destinationX,
-                "Destination.1": destinationY,
-                "status": status,
-            },
-        };
+        x = Number(x)
+        y = Number(y)
+        x = Number(x.toFixed(7));
+        y = Number(y.toFixed(7));
+
+        let updateDoc;
+        if (locType === "destination") {
+            updateDoc = {
+                $set: {
+                    "Destination.0": x,
+                    "Destination.1": y,
+                    "status": status,
+                },
+            };
+        } else {
+            updateDoc = {
+                $set: {
+                    "currentLocation.0": x,
+                    "currentLocation.1": y,
+                    "status": status,
+                },
+            };
+        }
 
         const result = await cars.updateOne(filter, updateDoc);
 
@@ -162,6 +174,19 @@ export async function setSpeed(worldSpeed) {
 
     let howFastWorldMoves = 1000 / worldSpeed;
     worldSpeed = howFastWorldMoves;
+}
+
+// return an array of traffic
+export async function getAllTraffic() {
+    try {
+        await connectClient(); // Ensure connection is established
+        const database = client.db(dbName);
+        const traffic = database.collection('Traffic');
+        const allTraffic= await traffic.find({}).toArray();
+        return allTraffic;
+    } catch (err) {
+        console.error("An error occurred:", err);
+    }
 }
 
 // Graceful shutdown for closing MongoDB client
