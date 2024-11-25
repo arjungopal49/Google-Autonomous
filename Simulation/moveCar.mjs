@@ -1,17 +1,18 @@
 import {MongoClient, ServerApiVersion, ObjectId} from 'mongodb';
 import polylineCodec from '@googlemaps/polyline-codec';
 import fetch from 'node-fetch';
-import {worldSpeed} from "./Database.mjs";
-
+import fs from 'fs/promises';
 
 const {decode} = polylineCodec;
 import config from './config.js';
+import { read } from 'fs';
 
 
 const username = encodeURIComponent("eksmith26");
 const password = encodeURIComponent("Grace27$$");  // URL encoded password
 const dbName = "Simu8";
 const API_KEY = config.API_KEY;
+let randomName = null;
 
 const uri = `mongodb+srv://${username}:${password}@autosimulate.7qsly.mongodb.net/?retryWrites=true&w=majority&appName=AutoSimulate`;
 
@@ -31,6 +32,34 @@ let car = {
     status: "free"
 };
 
+
+let worldSpeed = 1000;
+
+// Cache for storing each car's route coordinates
+const routeCache = {};
+
+// Map to store state for each car using the car's ID as the key
+const carStates = new Map();
+
+
+async function readFirstLine() {
+    try {
+        // Read the file content
+        const data = await fs.readFile('./collectionName.txt', 'utf8');
+        
+        // Split the file content into lines and get the first line
+        const firstLine = data.split('\n')[0].trim();
+        
+        // Assign the first line to randomName
+        randomName = firstLine;
+        
+        console.log(`First line read from file: '${randomName}'`);
+        return randomName; // Return the value if needed elsewhere
+    } catch (err) {
+        console.error(`Error reading file :`, err);
+        throw err; // Rethrow error if additional handling is needed
+    }
+}
 
 // Function to calculate distance between two coordinates using the haversine formula
 function haversineDistance([x1, y1], [x2, y2]) {
@@ -53,11 +82,6 @@ function interpolate([x1, y1], [x2, y2], ratio) {
 
 }
 
-// Cache for storing each car's route coordinates
-const routeCache = {};
-
-// Map to store state for each car using the car's ID as the key
-const carStates = new Map();
 
 // Function to check if current coordinates of the car within the square of the traffic
 async function checkTraffic(carLocation) {
@@ -102,12 +126,11 @@ async function checkTraffic(carLocation) {
 
 async function updateCarLocation() {
     const database = client.db(dbName);
-    const carsCollection = database.collection('Autonomous Cars');
+    const carsCollection = database.collection(randomName);
 
     // Query for cars that are currently moving (toUser or ride status)
     const query = { status: { $in: ["toUser", "ride"] } };
     const carsInUse = await carsCollection.find(query).toArray();
-
     for (let car of carsInUse) {
         const carId = car._id.toString();
 
@@ -228,25 +251,32 @@ async function updateCarLocation() {
     }
 }
 
+readFirstLine(); 
+
+async function mainLoop() {
+    while (true) {
+        try {
+            await fetchWorldSpeed(); // Ensure worldSpeed is updated
+            await updateCarLocation(); // Update car locations
+        } catch (err) {
+            console.error("An error occurred during update:", err);
+        }
+        await new Promise(resolve => setTimeout(resolve, worldSpeed)); // Use the latest worldSpeed dynamically
+    }
+}
+
+// Connect to the database and start the main loop
 (async () => {
     try {
         await client.connect();
         console.log("Connected to the database.");
-
-        // Call updateCarLocation every second
-        setInterval(async () => {
-            try {
-                await updateCarLocation();
-            } catch (err) {
-                console.error("An error occurred during update:", err);
-            }
-        }, worldSpeed); // this is where to change the "how fast the world is moving"
+        await readFirstLine(); // Load randomName from file
+        mainLoop(); // Start the main loop
     } catch (err) {
         console.error("An error occurred while connecting:", err);
         await client.close();
     }
 })();
-
 
 // Helper function to fetch the polyline from Google Maps API
 async function fetchPolyline(origin, destination) {
@@ -320,3 +350,20 @@ async function fetchPolyline(origin, destination) {
     }
 }
 
+export async function fetchWorldSpeed() {
+    try {
+        await client.connect();
+        const database = client.db(dbName);
+        const worldSpeedCollection = database.collection('WorldSpeed');
+
+        // Fetch the current worldSpeed value
+        const result = await worldSpeedCollection.findOne({});
+        if (result && result.worldSpeed) {
+            worldSpeed = result.worldSpeed; // Update the global variable
+        } else {
+            console.log("worldSpeed document not found. Using default value.");
+        }
+    } catch (err) {
+        console.error("Error fetching worldSpeed:", err);
+    }
+}

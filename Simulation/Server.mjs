@@ -1,5 +1,6 @@
 import express from "./node_modules/express/index.js";
 import {setSpeed, freeUpCar, generateTraffic, getAllCars, query, removeTraffic, updateCar} from "./Database.mjs";
+
 import cors from "cors"; // Import the CORS package
 
 const app = express();
@@ -85,17 +86,23 @@ app.get('/remove-traffic', async (req, res) => {
   }
 });
 
-app.listen(port, () => {
-  console.log(`Server is running on port ${port}`);
+app.post('/set_speed', async (req, res) => {
+  const { speed } = req.body; // Use req.body to read POST parameters
+  try {
+    if (!speed) {
+      throw new Error("Speed parameter is missing");
+    }
+    const result = await setSpeed(Number(speed)); // Convert speed to a number
+    res.status(200).json({
+      message: "Speed updated successfully",
+      updatedSpeed: result,
+    }); // Send confirmation and updated speed
+  } catch (error) {
+    res.status(500).json({ error: error.message }); // Send error message if something goes wrong
+  }
 });
 
-app.get('/set_speed', async (req, res) => {
-  const { speed } = req.body;
-  try {
-    const result = await setSpeed(speed);
-      res.status(200).send();// Send 200 status code if the car is freed successfully
-  } catch (error) {
-    res.status(500).json({ error: "Error while freeing up car." });
-  }
+app.listen(port, () => {
+  console.log(`Server is running on port ${port}`);
 });
 
