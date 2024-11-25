@@ -26,7 +26,7 @@ def request_car():
 
 
 
-def update_car(carId, destinationX, destinationY, status):
+def update_car(carId, x, y, status, locType):
     # Making a POST request to the /request-car endpoint of the server.mjs
     try:
         # Replace with the correct port if necessary
@@ -34,9 +34,10 @@ def update_car(carId, destinationX, destinationY, status):
 
         body = {
             "carId": carId,
-            "destinationX": destinationX,
-            "destinationY": destinationY,
-            "status": status
+            "x": x,
+            "y": y,
+            "status": status,
+            "locType": locType
         }
 
         # Make the request to the Express server
@@ -90,5 +91,88 @@ def freeUp_Car(carId):
             print("Car is now free")
         else:
             return jsonify({'error': 'Failed to fetch car data from Express server'}), 500
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+
+
+def generate_traffic(minLatLng, maxLatLng):
+    # Making a GET request to the /generate-traffic endpoint of the server.mjs
+    try:
+        # Replace with the correct port if necessary
+        server_url = "http://localhost:4000/generate-traffic"
+
+        body = {
+            "minLatLng": minLatLng,
+            "maxLatLng": maxLatLng
+        }
+
+        # Make the request to the Express server
+        response = requests.get(server_url, json=body)
+        # Check if the request was successful
+        if response.status_code == 200:
+            print("Generates Traffic Successfully")
+        else:
+            return jsonify({'error': 'Failed to fetch car data from Express server'}), 500
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    
+
+def remove_traffic(minLatLng, maxLatLng):
+    # Making a GET request to the /remove-traffic endpoint of the server.mjs
+    try:
+        # Replace with the correct port if necessary
+        server_url = "http://localhost:4000/remove-traffic"
+
+        body = {
+            "minLatLng": minLatLng,
+            "maxLatLng": maxLatLng
+        }
+
+        # Make the request to the Express server
+        response = requests.get(server_url, json=body)
+        # Check if the request was successful
+        if response.status_code == 200:
+            print("Removes Traffic Successfully")
+        else:
+            return jsonify({'error': 'Failed to fetch car data from Express server'}), 500
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    
+
+def set_speed(speed):
+    # Making a GET request to the /set_speed endpoint of the server.mjs
+    try:
+        # Replace with the correct port if necessary
+        server_url = "http://localhost:4000/set_speed"
+
+        body = {
+            "speed": speed
+        }
+
+        # Make the request to the Express server
+        response = requests.get(server_url, json=body)
+        # Check if the request was successful
+        if response.status_code == 200:
+            print("Speed Set Successfully")
+        else:
+            return jsonify({'error': 'Failed to fetch car data from Express server'}), 500
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
+    
+
+def get_all_traffic():
+    # Making a GET request to the /all-traffic endpoint of the server.mjs
+    try:
+        # Replace with the correct port if necessary
+        server_url = "http://localhost:4000/all-traffic"
+
+        # Make the request to the Express server
+        response = requests.get(server_url)
+        # Check if the request was successful
+        if response.status_code == 200:
+            traffic = response.json()
+            return traffic
+        else:
+            return jsonify({'error': 'Failed to fetch traffic data from Express server'}), 500
     except Exception as e:
         return jsonify({'error': str(e)}), 500

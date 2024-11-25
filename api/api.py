@@ -110,7 +110,7 @@ def choose_car():
     results = mapsServlet.getRouteMatrix(carLocations, pickupLocation)
     closestCarIndex = min(results, key=lambda x: int(x['duration'].strip('s')))['carIndex']
 
-    carsServlet.update_car(free_cars[closestCarIndex]["_id"], originX, originY, "toUser")
+    carsServlet.update_car(free_cars[closestCarIndex]["_id"], originX, originY, "toUser", "destination")
 
     arrivalTime = mapsServlet.get_travel_time(str(free_cars[closestCarIndex]["currentLocation"]).replace(" ", "").replace("'","")[1:-1], origin)
     polyline = mapsServlet.get_route(str(free_cars[closestCarIndex]["currentLocation"]).replace(" ", "").replace("'","")[1:-1], origin)
@@ -125,6 +125,13 @@ def freeAllCars():
         if car["status"] != "free":
             carsServlet.freeUp_Car(car["_id"])
     return jsonify("All cars freed")
+
+
+@app.route('/free-car', methods=['POST'])
+def freeCar():
+    carId = request.args.get('id')
+    carsServlet.freeUp_Car(carId)
+    return jsonify("Car freed")
 
 
 @app.route('/get-all-cars', methods=['GET'])
@@ -165,8 +172,7 @@ def trackProgress():
     if car["status"] == "waiting" or car["status"] == "free":
         return jsonify({'car': car, 'remaining-time': "0", 'remaining-route': ""})
     remainingTime = mapsServlet.get_travel_time(carCurrLoc, carDest)
-    polyline = mapsServlet.get_route(carCurrLoc, carDest)
-    return jsonify({'car': car, 'remaining-time': remainingTime, 'remaining-route': polyline})
+    return jsonify({'car': car, 'remaining-time': remainingTime, 'remaining-route': car["polyline"]})
 
 
 @app.route('/start-ride', methods=['POST'])
@@ -182,5 +188,52 @@ def startRide():
         destinationX = float(destination.split(",")[0])
         destinationY = float(destination.split(",")[1])
 
-    carsServlet.update_car(carId, destinationX, destinationY, "ride")
+    carsServlet.update_car(carId, destinationX, destinationY, "ride", "destination")
     return jsonify("ride started")
+
+
+@app.route('/update-car', methods=['POST'])
+def updateCar():
+    carId = request.args.get('id')
+    location = request.args.get('location')
+    type = request.args.get('type')
+    status = request.args.get('status')
+    locationX, locationY = 0,0
+    print(location)
+
+    if not type or type=="address":
+        locationX, locationY = mapsServlet.addressToCoordinates(location)
+    else:
+        locationX = float(location.split(",")[0])
+        locationY = float(location.split(",")[1])
+
+    carsServlet.update_car(carId, locationX, locationY, status, "current")
+    return jsonify("car updated")
+
+
+@app.route('/generate-traffic', methods=['POST'])
+def generateTraffic():
+    minLatLng = request.args.get('minLatLng')
+    maxLatLng = request.args.get('maxLatLng')
+    carsServlet.generate_traffic(minLatLng, maxLatLng)
+    return jsonify("traffic generated")
+
+@app.route('/remove-traffic', methods=['POST'])
+def removeTraffic():
+    minLatLng = request.args.get('minLatLng')
+    maxLatLng = request.args.get('maxLatLng')
+    carsServlet.remove_traffic(minLatLng, maxLatLng)
+    return jsonify("traffic removed")
+
+
+@app.route('/get-all-traffic', methods=['GET'])
+def getAllTraffic():
+    traffic = carsServlet.get_all_traffic()
+    return jsonify(traffic)
+
+
+@app.route('/set-speed', methods=['POST'])
+def setSpeed():
+    speed = request.args.get('speed')
+    carsServlet.set_speed(speed)
+    return jsonify("speed set")
