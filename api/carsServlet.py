@@ -140,7 +140,7 @@ def remove_traffic(minLatLng, maxLatLng):
     
 
 def set_speed(speed):
-    # Making a GET request to the /set_speed endpoint of the server.mjs
+    # Making a POST request to the /set_speed endpoint of the server.mjs
     try:
         # Replace with the correct port if necessary
         server_url = "http://localhost:4000/set_speed"
@@ -150,7 +150,7 @@ def set_speed(speed):
         }
 
         # Make the request to the Express server
-        response = requests.get(server_url, json=body)
+        response = requests.post(server_url, json=body)
         # Check if the request was successful
         if response.status_code == 200:
             print("Speed Set Successfully")
