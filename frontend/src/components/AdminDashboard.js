@@ -1,5 +1,20 @@
 import React, { useState, useEffect } from "react";
 import MapComponentAdmin from './MapComponentAdmin';
+import { styled } from '@mui/material/styles';
+import Table from '@mui/material/Table';
+import TableBody from '@mui/material/TableBody';
+import TableCell, { tableCellClasses } from '@mui/material/TableCell';
+import TableContainer from '@mui/material/TableContainer';
+import TableHead from '@mui/material/TableHead';
+import TableRow from '@mui/material/TableRow';
+import Paper from '@mui/material/Paper';
+import Button from '@mui/material/Button';
+import Slider from '@mui/material/Slider';
+import Typography from '@mui/material/Typography';
+import Card from '@mui/material/Card';
+import CardContent from '@mui/material/CardContent';
+import CardActions from '@mui/material/CardActions';
+import AdminHead from "./HeaderAdmin";
 
 const AdminDashboard = () => {
   const [refreshRateInput, setRefreshRateInput] = useState("");
@@ -12,7 +27,7 @@ const AdminDashboard = () => {
   const [locationX, setLocationX] = useState("");
   const [locationY, setLocationY] = useState("");
   const [carStatus, setCarStatus] = useState("");
-  const [speed, setSpeed] = useState("");
+  const [speed, setSpeed] = useState(1); // Default speed is 1
   const [statusMessage, setStatusMessage] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -24,14 +39,12 @@ const AdminDashboard = () => {
           method: 'GET',
         });
         const carData = await response.json();
-        console.log(carData)
         setCars(carData);
 
         const response2 = await fetch(`http://127.0.0.1:5000/get-all-traffic`, {
           method: 'GET',
         });
         const trafficData = await response2.json();
-        console.log(trafficData)
         setTraffic(trafficData);
       } catch (error) {
         console.error("Error fetching cars and traffic:", error);
@@ -39,11 +52,10 @@ const AdminDashboard = () => {
       }
     };
 
-    // Poll for car data every 5 seconds
-    const intervalId = setInterval(fetchAllCarsAndTraffic, refreshRate*1000);
-    fetchAllCarsAndTraffic(); // Initial fetch
+    const intervalId = setInterval(fetchAllCarsAndTraffic, refreshRate * 1000);
+    fetchAllCarsAndTraffic();
 
-    return () => clearInterval(intervalId); // Cleanup on unmount
+    return () => clearInterval(intervalId);
   }, [refreshRate]);
 
   const updateCar = async () => {
@@ -54,7 +66,7 @@ const AdminDashboard = () => {
     setLoading(true);
     try {
       const response = await fetch(
-        `http://127.0.0.1:5000/update-car?id=${carId}&location=${locationX+","+locationY}&type=coords&status=${carStatus}`,
+        `http://127.0.0.1:5000/update-car?id=${carId}&location=${locationX},${locationY}&type=coords&status=${carStatus}`,
         { method: 'POST' }
       );
       console.log(await response.json());
@@ -72,7 +84,7 @@ const AdminDashboard = () => {
       const response = await fetch(`http://127.0.0.1:5000/free-car?id=${carId}`, {
         method: 'POST',
       });
-      console.log(response.json());
+      console.log(await response.json());
       setStatusMessage("Car freed successfully.");
     } catch (error) {
       console.error("Error freeing car:", error);
@@ -122,17 +134,13 @@ const AdminDashboard = () => {
   };
 
   const updateSpeed = async () => {
-    if (!speed || isNaN(speed) || speed <= 0) {
-      setStatusMessage("Please enter a valid positive speed.");
-      return;
-    }
     setLoading(true);
     try {
       const response = await fetch(`http://127.0.0.1:5000/set-speed?speed=${speed}`, {
         method: 'POST',
       });
-      console.log(response.json());
-      setStatusMessage("Simulation speed updated.");
+      console.log(await response.json());
+      setStatusMessage(`Simulation speed updated to ${speed}.`);
     } catch (error) {
       console.error("Error setting speed:", error);
       setStatusMessage("Failed to set speed.");
@@ -145,101 +153,205 @@ const AdminDashboard = () => {
       setStatusMessage("Please enter a valid positive refresh rate.");
       return;
     }
-    setRefreshRate(refreshRateInput)
-  }
+    setRefreshRate(refreshRateInput);
+  };
+
+  const StyledTableCell = styled(TableCell)(({ theme }) => ({
+    [`&.${tableCellClasses.head}`]: {
+      backgroundColor: theme.palette.common.black,
+      color: theme.palette.common.white,
+    },
+    [`&.${tableCellClasses.body}`]: {
+      fontSize: 14,
+    },
+  }));
+
+  const StyledTableRow = styled(TableRow)(({ theme }) => ({
+    '&:nth-of-type(odd)': {
+      backgroundColor: theme.palette.action.hover,
+    },
+    '&:last-child td, &:last-child th': {
+      border: 0,
+    },
+  }));
+
+  const handleSpeedChange = (event, value) => {
+    setSpeed(value);
+  };
 
   return (
-    <div style={{ display: "flex", height: "100vh" }}>
-      <div style={{ flex: 1, borderRight: "1px solid #ddd" }}>
-        {/* Pass cars data to the MapComponent */}
-        <MapComponentAdmin allCars={cars} allTraffic={traffic}/>
-      </div>
-      <div style={{ flex: 1, padding: "20px", overflowY: "auto" }}>
-        <h1>Admin Dashboard</h1>
-        {loading && <p>Loading...</p>}
+    <div className="app-container">
+      <AdminHead />
+      <div style={{ display: "flex", height: "100vh" }}>
+        <div style={{ flex: 1, borderRight: "1px solid #ddd" }}>
+          <MapComponentAdmin allCars={cars} allTraffic={traffic} />
+        </div>
+        <div style={{ flex: 1, padding: "20px", overflowY: "auto" }}>
+          {loading && <p>Loading...</p>}
 
-        <div>
-          <h2>Cars List</h2>
-          <ul>
-            {cars.map((car) => (
-              <li key={car._id}>
-                ID: {car._id}, Status: {car.status}, Location: {car.currentLocation?.join(", ")}
-                <button onClick={() => freeCar(car._id)}>Free Up</button>
-              </li>
-            ))}
-          </ul>
+          <div align="left">
+          <Typography variant="h4">Cars List</Typography>
+          <TableContainer component={Paper}>
+            <Table sx={{ minWidth: 700 }} aria-label="customized table">
+              <TableHead>
+                <TableRow>
+                  <StyledTableCell>Car ID</StyledTableCell>
+                  <StyledTableCell>Car Location</StyledTableCell>
+                  <StyledTableCell>Car Status</StyledTableCell>
+                  <StyledTableCell align="center">Action</StyledTableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {cars.map((car) => (
+                  <StyledTableRow key={car._id}>
+                    <StyledTableCell component="th" scope="row">
+                      {car._id}
+                    </StyledTableCell>
+                    <StyledTableCell>
+                      {car.currentLocation?.join(", ") || "Unknown"}
+                    </StyledTableCell>
+                    <StyledTableCell>{car.status}</StyledTableCell>
+                    <StyledTableCell align="center">
+                      <Button
+                        variant="contained"
+                        color="primary"
+                        onClick={() => freeCar(car._id)}
+                        disabled={car.status === "free"}
+                        sx={{
+                          backgroundColor: car.status === "free" ? "#d3d3d3" : "primary.main",
+                          color: car.status === "free" ? "#808080" : "white",
+                          pointerEvents: car.status === "free" ? "none" : "auto",
+                        }}
+                      >
+                        Free Up
+                      </Button>
+                    </StyledTableCell>
+                  </StyledTableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
         </div>
 
-        <div>
-          <h2>Update Car</h2>
-          <input
-            type="text"
-            placeholder="Car ID"
-            value={carId}
-            onChange={(e) => setCarId(e.target.value)}
-          />
-          <input
-            type="number"
-            placeholder="Location X"
-            value={locationX}
-            onChange={(e) => setLocationX(e.target.value)}
-          />
-          <input
-            type="number"
-            placeholder="Location Y"
-            value={locationY}
-            onChange={(e) => setLocationY(e.target.value)}
-          />
-          <input
-            type="text"
-            placeholder="Status"
-            value={carStatus}
-            onChange={(e) => setCarStatus(e.target.value)}
-          />
-          <button onClick={updateCar}>Update Car</button>
-        </div>
 
-        <div>
-          <h2>Traffic Management</h2>
-          <input
-            type="text"
-            placeholder="Min LatLng (e.g., 43.07,-89.4)"
-            value={minLatLng}
-            onChange={(e) => setMinLatLng(e.target.value)}
-          />
-          <input
-            type="text"
-            placeholder="Max LatLng (e.g., 43.08,-89.39)"
-            value={maxLatLng}
-            onChange={(e) => setMaxLatLng(e.target.value)}
-          />
-          <button onClick={generateTraffic}>Generate Traffic</button>
-          <button onClick={removeTraffic}>Remove Traffic</button>
-        </div>
+          {/* Update Car */}
+          <Card sx={{ marginTop: 3, padding: 3 }}>
+            <CardContent>
+              <Typography variant="h5" align="left">Update Car</Typography>
+              <input
+                type="text"
+                placeholder="Car ID"
+                value={carId}
+                onChange={(e) => setCarId(e.target.value)}
+                style={{ margin: "5px" }}
+              />
+              <input
+                type="number"
+                placeholder="Location X"
+                value={locationX}
+                onChange={(e) => setLocationX(e.target.value)}
+                style={{ margin: "5px" }}
+              />
+              <input
+                type="number"
+                placeholder="Location Y"
+                value={locationY}
+                onChange={(e) => setLocationY(e.target.value)}
+                style={{ margin: "5px" }}
+              />
+              <input
+                type="text"
+                placeholder="Status"
+                value={carStatus}
+                onChange={(e) => setCarStatus(e.target.value)}
+                style={{ margin: "5px" }}
+              />
+            </CardContent>
+            <CardActions style={{ justifyContent: 'center' }}>
+              <Button variant="contained" color="primary" onClick={updateCar}>
+                Update Car
+              </Button>
+            </CardActions>
+          </Card>
 
-        <div>
-          <h2>Set Simulation Speed</h2>
-          <input
-            type="number"
-            placeholder="Enter speed (e.g., 1000)"
-            value={speed}
-            onChange={(e) => setSpeed(e.target.value)}
-          />
-          <button onClick={updateSpeed}>Set Speed</button>
-        </div>
+          {/* Traffic Management */}
+          <Card sx={{ marginTop: 3, padding: 3 }}>
+            <CardContent>
+              <Typography variant="h5" align="left">Traffic Management</Typography>
+              <input
+                type="text"
+                placeholder="Min LatLng (e.g., 43.07,-89.4)"
+                value={minLatLng}
+                onChange={(e) => setMinLatLng(e.target.value)}
+                style={{ margin: "5px" }}
+              />
+              <input
+                type="text"
+                placeholder="Max LatLng (e.g., 43.08,-89.39)"
+                value={maxLatLng}
+                onChange={(e) => setMaxLatLng(e.target.value)}
+                style={{ margin: "5px" }}
+              />
+            </CardContent>
+            <CardActions style={{ justifyContent: 'center' }}>
+              <Button variant="contained" color="primary" onClick={generateTraffic}>
+                Generate Traffic
+              </Button>
+              <Button variant="contained" color="secondary" onClick={removeTraffic}>
+                Remove Traffic
+              </Button>
+            </CardActions>
+          </Card>
 
-        <div>
-          <h2>Set Refresh Rate</h2>
-          <input
-            type="number"
-            placeholder="Enter refresh rate"
-            value={refreshRateInput}
-            onChange={(e) => setRefreshRateInput(e.target.value)}
-          />
-          <button onClick={updateRefresh}>Set Rate</button>
-        </div>
+          {/* Set Simulation Speed */}
+          <Card sx={{ marginTop: 3, padding: 3 }}>
+            <CardContent>
+              <Typography variant="h5" align="left">Set Simulation Speed</Typography>
+              <Slider
+                value={speed}
+                onChange={handleSpeedChange}
+                aria-labelledby="simulation-speed-slider"
+                step={1}
+                marks={[
+                  { value: 1, label: '1' },
+                  { value: 3, label: '3' },
+                  { value: 5, label: '5' },
+                  { value: 7, label: '7' },
+                  { value: 10, label: '10' },
+                ]}
+                min={1}
+                max={10}
+                valueLabelDisplay="on"
+              />
+            </CardContent>
+            <CardActions style={{ justifyContent: 'center' }}>
+              <Button variant="contained" color="primary" onClick={updateSpeed}>
+                Set Speed
+              </Button>
+            </CardActions>
+          </Card>
 
-        {statusMessage && <p>{statusMessage}</p>}
+          {/* Set Refresh Rate */}
+          <Card sx={{ marginTop: 3, padding: 3 }}>
+            <CardContent>
+              <Typography variant="h5" align="left">Set Refresh Rate</Typography>
+              <input
+                type="number"
+                placeholder="Enter refresh rate"
+                value={refreshRateInput}
+                onChange={(e) => setRefreshRateInput(e.target.value)}
+                style={{ margin: "5px" }}
+              />
+            </CardContent>
+            <CardActions style={{ justifyContent: 'center' }}>
+              <Button variant="contained" color="primary" onClick={updateRefresh}>
+                Set Rate
+              </Button>
+            </CardActions>
+          </Card>
+
+          {statusMessage && <p>{statusMessage}</p>}
+        </div>
       </div>
     </div>
   );

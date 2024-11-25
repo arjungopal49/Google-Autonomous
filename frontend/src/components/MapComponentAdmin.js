@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import carGreen from '../Images/carGreen.png';
 import carRed from '../Images/carRed.png';
 
@@ -6,7 +6,8 @@ const MapComponentAdmin = ({ encodedPolyline, carLocation, carDest, allCars, all
   const mapRef = useRef(null);  // Store map instance
   const polylineRef = useRef(null); // Store polyline instance
   const markersRef = useRef([]); // Store markers
-  const trafficBoxesRef = useRef([]); // store traffic boxes
+  const trafficBoxesRef = useRef([]); // Store traffic boxes
+  const [popupVisible, setPopupVisible] = useState(false);
 
   useEffect(() => {
     const initMap = () => {
@@ -14,6 +15,24 @@ const MapComponentAdmin = ({ encodedPolyline, carLocation, carDest, allCars, all
       mapRef.current = new window.google.maps.Map(document.getElementById('map'), {
         zoom: 13,
         center: center,
+      });
+
+      // Add click listener to the map
+      mapRef.current.addListener('click', (event) => {
+        const { latLng } = event;
+        const coordinates = `${latLng.lat()}, ${latLng.lng()}`; // Raw coordinates
+        console.log(`Clicked coordinates: ${coordinates}`);
+        
+        // Copy raw coordinates to clipboard
+        navigator.clipboard.writeText(coordinates)
+          .then(() => {
+            console.log('Coordinates copied to clipboard');
+            setPopupVisible(true); // Show popup
+            setTimeout(() => setPopupVisible(false), 2000); // Hide after 2 seconds
+          })
+          .catch(err => {
+            console.error('Failed to copy coordinates to clipboard', err);
+          });
       });
     };
 
@@ -79,14 +98,6 @@ const MapComponentAdmin = ({ encodedPolyline, carLocation, carDest, allCars, all
         });
       }
 
-      // Optionally, center the map around the first car (if available)
-      if (allCars.length > 0) {
-        mapRef.current.setCenter({
-          lat: allCars[0].currentLocation[0],
-          lng: allCars[0].currentLocation[1],
-        });
-      }
-
       // Show all traffic boxes
       if (allTraffic) {
         allTraffic.forEach(traffic => {
@@ -109,9 +120,29 @@ const MapComponentAdmin = ({ encodedPolyline, carLocation, carDest, allCars, all
         });
       }
     }
-  }, [allCars, allTraffic]); // Update markers whenever allCars changes
+  }, [allCars, allTraffic]); // Update markers and traffic boxes when props change
 
-  return <div id="map" style={{ width: '50vw', height: '90vh' }}></div>;
+  return (
+    <div style={{ position: 'relative' }}>
+      <div id="map" style={{ width: '50vw', height: '90vh' }}></div>
+      {popupVisible && (
+        <div style={{
+          position: 'absolute',
+          top: '10px',
+          left: '50%',
+          transform: 'translateX(-50%)',
+          backgroundColor: 'black',
+          color: 'white',
+          padding: '10px 20px',
+          borderRadius: '5px',
+          fontSize: '14px',
+          zIndex: 1000,
+        }}>
+          Coordinates copied to clipboard!
+        </div>
+      )}
+    </div>
+  );
 };
 
 export default MapComponentAdmin;
