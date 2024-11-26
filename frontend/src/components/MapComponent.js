@@ -3,7 +3,7 @@ import carGreen from '../Images/carGreen.png';
 import carRed from '../Images/carRed.png';
 
 const MapComponent = ({ encodedPolyline, carLocation, carDest, allCars }) => {
-  const mapRef = useRef(null);  // Store map instance
+  const mapRef = useRef(null); // Store map instance
   const polylineRef = useRef(null); // Store polyline instance
   const markersRef = useRef([]); // Store markers
 
@@ -59,7 +59,7 @@ const MapComponent = ({ encodedPolyline, carLocation, carDest, allCars }) => {
       markersRef.current = [];
 
       if (carLocation && carDest) {
-        const image ={
+        const image = {
           url: "https://cdn.prod.website-files.com/62c5e0898dea0b799c5f2210/62e8212acc540f291431bad2_location-icon.png",
           scaledSize: new window.google.maps.Size(32, 32),
         };
@@ -80,17 +80,19 @@ const MapComponent = ({ encodedPolyline, carLocation, carDest, allCars }) => {
         markersRef.current.push(carMarker);
         mapRef.current.setCenter({ lat: carLocation[0], lng: carLocation[1] }); // Center map on car location
       } else if (allCars) {
-        allCars.forEach(car => {
-          const carMarker = new window.google.maps.Marker({
-            position: { lat: car.currentLocation[0], lng: car.currentLocation[1] },
-            map: mapRef.current,
-            icon: {
-              url: car.status === 'free' ? carGreen : carRed,
-              scaledSize: new window.google.maps.Size(60, 50)
-            }
+        allCars
+          .filter(car => car.status === 'free') // Only include cars that are free
+          .forEach(car => {
+            const carMarker = new window.google.maps.Marker({
+              position: { lat: car.currentLocation[0], lng: car.currentLocation[1] },
+              map: mapRef.current,
+              icon: {
+                url: carGreen,
+                scaledSize: new window.google.maps.Size(60, 50)
+              }
+            });
+            markersRef.current.push(carMarker);
           });
-          markersRef.current.push(carMarker);
-        });
       }
     }
   }, [carLocation, allCars]); // Update markers when carLocation or allCars changes

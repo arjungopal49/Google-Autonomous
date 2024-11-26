@@ -1,11 +1,13 @@
 import {MongoClient, ServerApiVersion, ObjectId} from 'mongodb';
+import fs from 'fs/promises';
 
 const username = encodeURIComponent("eksmith26");
 const password = encodeURIComponent("Grace27$$");  // URL encoded password
 const dbName = "Simu8";
-export let worldSpeed = 1000;
 
 const uri = `mongodb+srv://${username}:${password}@autosimulate.7qsly.mongodb.net/?retryWrites=true&w=majority&appName=AutoSimulate`;
+let randomName = null;
+let isConnected = false;
 
 const client = new MongoClient(uri, {
     serverApi: {
@@ -14,15 +16,7 @@ const client = new MongoClient(uri, {
         deprecationErrors: true,
     }
 });
-let isConnected = false;
 
-async function connectClient() {
-    if (!isConnected) {
-        await client.connect();
-        isConnected = true;
-        console.log("Connected to database");
-    }
-}
 // Create Car object which will be returned to the backend with the results from the query
 let car = {
     id: null,
@@ -31,12 +25,39 @@ let car = {
     status: "free"
 };
 
+async function readFirstLine() {
+    try {
+        // Read the file content
+        const data = await fs.readFile('./collectionName.txt', 'utf8');
+        
+        // Split the file content into lines and get the first line
+        const firstLine = data.split('\n')[0].trim();
+        
+        // Assign the first line to randomName
+        randomName = firstLine;
+        
+        console.log(`First line read from file: '${randomName}'`);
+        return randomName; // Return the value if needed elsewhere
+    } catch (err) {
+        console.error(`Error reading file :`, err);
+        throw err; // Rethrow error if additional handling is needed
+    }
+}
+
+async function connectClient() {
+    if (!isConnected) {
+        await client.connect();
+        isConnected = true;
+        console.log("Connected to database");
+    }
+}
+
 // return an array of all free cars to backend
 export async function query() {
     try {
         await connectClient();  // Ensure connection is established
         const database = client.db(dbName);
-        const cars = database.collection('Autonomous Cars');
+        const cars = database.collection(randomName);
         const query = {status: "free"};
 
         // Convert cursor to array so you can return the results
@@ -49,24 +70,36 @@ export async function query() {
 }
 
 // function to update car location picked by backend for the ride
-export async function updateCar(carId, destinationX, destinationY, status) {
+export async function updateCar(carId, x, y, status, locType) {
     try {
         await connectClient();
         const database = client.db(dbName);
-        const cars = database.collection('Autonomous Cars');
+        const cars = database.collection(randomName);
         console.log(carId);
         const filter = {_id: new ObjectId(carId)};
-        destinationX = Number(destinationX)
-        destinationY = Number(destinationY)
-        destinationX = Number(destinationX.toFixed(7));
-        destinationY = Number(destinationY.toFixed(7));
-        const updateDoc = {
-            $set: {
-                "Destination.0": destinationX,
-                "Destination.1": destinationY,
-                "status": status,
-            },
-        };
+        x = Number(x)
+        y = Number(y)
+        x = Number(x.toFixed(7));
+        y = Number(y.toFixed(7));
+
+        let updateDoc;
+        if (locType === "destination") {
+            updateDoc = {
+                $set: {
+                    "Destination.0": x,
+                    "Destination.1": y,
+                    "status": status,
+                },
+            };
+        } else {
+            updateDoc = {
+                $set: {
+                    "currentLocation.0": x,
+                    "currentLocation.1": y,
+                    "status": status,
+                },
+            };
+        }
 
         const result = await cars.updateOne(filter, updateDoc);
 
@@ -86,7 +119,7 @@ export async function getAllCars() {
     try {
         await connectClient(); // Ensure connection is established
         const database = client.db(dbName);
-        const cars = database.collection('Autonomous Cars');
+        const cars = database.collection(randomName);
         const allCars = await cars.find({}).toArray();
         return allCars;
     } catch (err) {
@@ -99,7 +132,7 @@ export async function freeUpCar(carId) {
     try {
         await connectClient();
         const database = client.db(dbName);
-        const cars = database.collection('Autonomous Cars');
+        const cars = database.collection(randomName);
         //console.log(carId);
         const filter = {_id: new ObjectId(carId)};
         const updateDoc = {
@@ -158,10 +191,43 @@ export async function removeTraffic(minLatLng, maxLatLng) {
         console.error("An error occurred:", err);
     }
 }
-export async function setSpeed(worldSpeed) {
 
-    let howFastWorldMoves = 1000 / worldSpeed;
-    worldSpeed = howFastWorldMoves;
+  
+export async function setSpeed(newSpeed) {
+    try {
+        if (newSpeed <= 0) throw new Error("Speed must be greater than 0"); // Validate input
+
+        // Calculate the new world speed
+        const howFastWorldMoves = 1000 / newSpeed;
+
+        // Ensure the database is connected
+        await connectClient();
+        const database = client.db(dbName);
+        const worldSpeedCollection = database.collection('WorldSpeed');
+
+        // Update the worldSpeed value in the database
+        const result = await worldSpeedCollection.updateOne(
+            {}, // Query to match the document (leave empty to match all)
+            { $set: { worldSpeed: howFastWorldMoves } }, // Update the worldSpeed value
+            { upsert: true } // Create a new document if it doesn't exist
+        );
+        console.log("World Speed set successfully");
+    } catch (err) {
+        console.error("An error occurred:", err);
+    }
+}
+
+// return an array of traffic
+export async function getAllTraffic() {
+    try {
+        await connectClient(); // Ensure connection is established
+        const database = client.db(dbName);
+        const traffic = database.collection('Traffic');
+        const allTraffic= await traffic.find({}).toArray();
+        return allTraffic;
+    } catch (err) {
+        console.error("An error occurred:", err);
+    }
 }
 
 // Graceful shutdown for closing MongoDB client
@@ -188,6 +254,5 @@ function setupGracefulShutdown() {
         }
     });
 }
-
-// Call the setup function to ensure graceful shutdown
-setupGracefulShutdown();
+readFirstLine();   
+setupGracefulShutdown(); // Setup cleanup process on shutdown
