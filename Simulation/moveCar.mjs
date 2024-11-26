@@ -99,6 +99,101 @@ async function checkTraffic(carLocation) {
     }
 }
 
+function isInTrafficZone([lat, lng], trafficZone) {
+    const { minLatLng, maxLatLng } = trafficZone;
+    const [minLat, minLng] = minLatLng.split(",").map(parseFloat);
+    const [maxLat, maxLng] = maxLatLng.split(",").map(parseFloat);
+
+    return (
+        lat >= minLat && lat <= maxLat && // Latitude check
+        lng >= minLng && lng <= maxLng    // Longitude check
+    );
+}
+
+async function rerouteCar(carId) {
+    try {
+        const database = client.db(dbName);
+        const carsCollection = database.collection('Autonomous Cars');
+        const trafficCollection = database.collection('Traffic');
+
+        const car = await carsCollection.findOne({ _id: new ObjectId(carId) });
+        if (!car) {
+            console.error(`Car ${carId} not found.`);
+            return;
+        }
+
+        const [carLat, carLng] = car.currentLocation;
+        const [destLat, destLng] = car.Destination;
+
+        // Get current traffic data
+        const currentTraffic = await trafficCollection.find().toArray();
+
+        // Fetch alternative routes
+        const routes = await fetchPolyline(
+            `${carLat},${carLng}`,
+            `${destLat},${destLng}`,
+            true
+        );
+
+        if (routes === "error" || !Array.isArray(routes)) {
+            console.error(`Failed to fetch alternative routes for car ${carId}`);
+            return;
+        }
+
+        // Analyze each route for traffic impact
+        const analyzedRoutes = routes.map(route => {
+            const decodedCoords = decode(route.polyline);
+            let pointsInTraffic = 0;
+
+            // Check each point in the route for traffic
+            decodedCoords.forEach(coord => {
+                if (currentTraffic.some(zone => isInTrafficZone(coord, zone))) {
+                    pointsInTraffic++;
+                }
+            });
+
+            const trafficPercentage = (pointsInTraffic / decodedCoords.length) * 100;
+            const durationPenalty = (route.duration - routes[0].duration) / routes[0].duration * 100;
+
+            return {
+                ...route,
+                decodedCoords,
+                trafficPercentage,
+                score: trafficPercentage + durationPenalty // Lower is better
+            };
+        });
+
+        // Sort routes by score (lower is better)
+        analyzedRoutes.sort((a, b) => a.score - b.score);
+        const bestRoute = analyzedRoutes[0];
+
+        // If best route is significantly better than current (more than 20% better score)
+        if (bestRoute && bestRoute.score < analyzedRoutes[1]?.score * 0.8) {
+            // Update the car's route and cache
+            routeCache[carId] = {
+                coordinates: bestRoute.decodedCoords,
+                speed: bestRoute.speed
+            };
+
+            await carsCollection.updateOne(
+                { _id: car._id },
+                { $set: {
+                        polyline: bestRoute.polyline,
+                        speed: bestRoute.speed
+                    }}
+            );
+            console.log(`Car ${carId} rerouted successfully. New route has ${bestRoute.trafficPercentage.toFixed(1)}% traffic impact`);
+            return true;
+        } else {
+            console.log(`No significantly better route found for car ${carId}. Maintaining current route.`);
+            return false;
+        }
+
+    } catch (err) {
+        console.error(`An error occurred while rerouting car ${carId}:`, err);
+    }
+}
+
 
 async function updateCarLocation() {
     const database = client.db(dbName);
@@ -116,6 +211,7 @@ async function updateCarLocation() {
             carStates.set(carId, {
                 currentSegmentIndex: 0,
                 segmentDistanceCovered: 0,
+                stuckInTrafficTime: 0 // Initialize the stuck in traffic timer
             });
         }
 
@@ -156,8 +252,27 @@ async function updateCarLocation() {
         const { currentSegmentIndex, segmentDistanceCovered } = carState;
 
         if (isInTraffic) {
+            console.log("before update"+carState.stuckInTrafficTime);
+            carState.stuckInTrafficTime += 1; // Increment time in traffic
+            console.log("after update"+carState.stuckInTrafficTime);
+
             console.log(`Car ${carId} is in traffic. Waiting...`);
-            speed = speed / 2; // Reduce speed by half when in traffic
+            speed = speed / 4; // Reduce speed by half when in traffic
+        }else{
+            console.log("not in traffic resting"+carState.stuckInTrafficTime);
+            carState.stuckInTrafficTime = 0; // Reset the time in traffic
+        }
+
+        // Call rerouteCar if stuck in traffic for more than 2 minutes
+        if (carState.stuckInTrafficTime >= 120) {
+            console.log(`Car ${carId} has been stuck in traffic for too long. Rerouting...`);
+            const reroute = await rerouteCar(carId);
+            // If found a better route, skip further updates for this car in the current loop
+            if (reroute) {
+                continue; // Skip further updates for this car in the current loop
+            }else{
+                carState.stuckInTrafficTime = 0; // Reset the time in traffic
+            }
         }
         // Current and next coordinates
         const start = coordinates[currentSegmentIndex];
@@ -224,6 +339,7 @@ async function updateCarLocation() {
         carStates.set(carId, {
             currentSegmentIndex: newSegmentIndex,
             segmentDistanceCovered: updatedDistance,
+            stuckInTrafficTime: carState.stuckInTrafficTime // Preserve traffic time
         });
     }
 }
@@ -248,8 +364,7 @@ async function updateCarLocation() {
 })();
 
 
-// Helper function to fetch the polyline from Google Maps API
-async function fetchPolyline(origin, destination) {
+async function fetchPolyline(origin, destination, alternatives = false) {
     if (!origin || !destination || origin === 'undefined' || destination === 'undefined') {
         return "error";
     }
@@ -286,7 +401,7 @@ async function fetchPolyline(origin, destination) {
             },
             travelMode: "DRIVE",
             routingPreference: "TRAFFIC_AWARE",
-            computeAlternativeRoutes: false
+            computeAlternativeRoutes: alternatives
         });
 
         const response = await fetch(url, {
@@ -300,18 +415,28 @@ async function fetchPolyline(origin, destination) {
         }
 
         const data = await response.json();
-        console.log('Received data:', data);
-        console.log('Routes:', data.routes);
+
         if (!data.routes || !data.routes.length) {
             console.error('No routes returned from API');
             return 'error';
         }
 
-        const encodedPolyline = data.routes[0].polyline.encodedPolyline;
-        const distance = data.routes[0].distanceMeters; // total distance in meters
-        const time = parseInt(data.routes[0].duration, 10); // base 10
+        // Return an array of routes if alternatives are requested
+        if (alternatives) {
+            return data.routes.map(route => ({
+                polyline: route.polyline.encodedPolyline,
+                speed: route.distanceMeters / parseInt(route.duration), // Calculate speed in m/s
+                distance: route.distanceMeters,
+                duration: parseInt(route.duration)
+            }));
+        }
+
+        // Return single route data
+        const route = data.routes[0];
+        const encodedPolyline = route.polyline.encodedPolyline;
         const decodedPolyline = decode(encodedPolyline);
-        const speed = distance / time;
+        const speed = route.distanceMeters / parseInt(route.duration);
+
         return [decodedPolyline, speed, encodedPolyline];
 
     } catch (error) {

@@ -59,6 +59,16 @@ app.post('/free-car', async (req, res) => {
 //     "maxLatLng": "43.07167917359398, -89.40447893975805"
 // }
 
+
+//          *-----------------*maxLatLong
+//           |  x          x  |
+//           |      x         |
+//           |             x  |
+//           |   x            |
+//  minLatLng*----------------*
+//
+//
+
 //Endpoint to generate traffic
 app.get('/generate-traffic', async (req, res) => {
   const { minLatLng, maxLatLng } = req.body;
