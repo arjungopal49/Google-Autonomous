@@ -137,7 +137,11 @@ export async function freeUpCar(carId) {
         const filter = {_id: new ObjectId(carId)};
         const updateDoc = {
             $set: {
-                status: "free"
+                status: "free",
+                Destination: [null, null],
+                speed: 0,
+                polyline: null
+
             },
         };
 
@@ -154,25 +158,39 @@ export async function freeUpCar(carId) {
 }
 
 
-// stores the coordinates of the rectangle which has traffic in the database
-export async function generateTraffic(minLatLng, maxLatLng){
-    try{
+export async function generateTraffic(minLatLng, maxLatLng) {
+    try {
         await connectClient();
         const database = client.db(dbName);
         const traffic = database.collection('Traffic');
-        // Create a rectangle object to store in the database
-        const rectangleData = {
-            minLatLng: minLatLng,       // Bottom-left corner
-            maxLatLng: maxLatLng        // Top-right corner
+
+        // Parse input coordinates
+        const [minLat, minLng] = minLatLng.split(',').map(parseFloat);
+        const [maxLat, maxLng] = maxLatLng.split(',').map(parseFloat);
+
+        // Create a GeoJSON polygon for the traffic rectangle
+        const rectangleGeoJSON = {
+            type: "Polygon",
+            coordinates: [[
+                [minLng, minLat],  // Bottom-left
+                [maxLng, minLat],  // Bottom-right
+                [maxLng, maxLat],  // Top-right
+                [minLng, maxLat],  // Top-left
+                [minLng, minLat]   // Close the loop
+            ]]
         };
+
         // Insert the rectangle into the database
-        const result = await traffic.insertOne(rectangleData);
-        console.log("Traffic generated successfully");
-    }
-    catch(err){
+        const result = await traffic.insertOne({
+            geometry: rectangleGeoJSON
+        });
+
+        console.log("Traffic generated successfully with ID:", result.insertedId);
+    } catch (err) {
         console.error("An error occurred:", err);
     }
 }
+
 
 // function to remove traffic from the database
 export async function removeTraffic(minLatLng, maxLatLng) {
@@ -180,13 +198,38 @@ export async function removeTraffic(minLatLng, maxLatLng) {
         await connectClient();
         const database = client.db(dbName);
         const traffic = database.collection('Traffic');
-        // Define a query to match traffic entries with the specified coordinates
+        // Parse input coordinates
+        const [minLat, minLng] = minLatLng.split(',').map(parseFloat);
+        const [maxLat, maxLng] = maxLatLng.split(',').map(parseFloat);
+
+        // Define the query to remove traffic entries based on the bounding box (rectangle)
         const query = {
-            minLatLng: minLatLng,
-            maxLatLng: maxLatLng
+            "geometry": {
+                $geoWithin: {
+                    $geometry: {
+                        type: "Polygon",
+                        coordinates: [
+                            [
+                                [minLng, minLat],  // Bottom-left
+                                [maxLng, minLat],  // Bottom-right
+                                [maxLng, maxLat],  // Top-right
+                                [minLng, maxLat],  // Top-left
+                                [minLng, minLat]   // Close the loop
+                            ]
+                        ]
+                    }
+                }
+            }
         };
+
+
+        // Remove traffic entries matching the defined coordinates
         const result = await traffic.deleteMany(query);
-        console.log("Traffic removed successfully");
+        if (result.deletedCount > 0) {
+            console.log(`${result.deletedCount} traffic entries removed successfully.`);
+        } else {
+            console.log("No traffic entries found in the specified area.");
+        }
     } catch (err) {
         console.error("An error occurred:", err);
     }
@@ -255,4 +298,22 @@ function setupGracefulShutdown() {
     });
 }
 readFirstLine();   
+
+
+async function createIndex() {
+
+    try {
+        await connectClient();
+        const database = client.db(dbName);
+        const collection = database.collection("Traffic");
+
+        // Create an index
+        const result = await collection.createIndex({ geometry: "2dsphere" });
+        console.log(`Index created: ${result}`);
+    } catch (error) {
+        console.error("Error creating index:", error);
+    }
+}
+
+
 setupGracefulShutdown(); // Setup cleanup process on shutdown

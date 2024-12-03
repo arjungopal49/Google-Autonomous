@@ -1,11 +1,10 @@
-import {MongoClient, ServerApiVersion, ObjectId} from 'mongodb';
+import {MongoClient, ObjectId, ServerApiVersion} from 'mongodb';
 import polylineCodec from '@googlemaps/polyline-codec';
 import fetch from 'node-fetch';
 import fs from 'fs/promises';
+import config from './config.js';
 
 const {decode} = polylineCodec;
-import config from './config.js';
-import { read } from 'fs';
 
 
 const username = encodeURIComponent("eksmith26");
@@ -83,62 +82,46 @@ function interpolate([x1, y1], [x2, y2], ratio) {
 }
 
 
-// Function to check if current coordinates of the car within the square of the traffic
-async function checkTraffic(carLocation) {
+// Checks if the coordinates are in traffic
+async function checkTraffic(coordinates) {
     try {
-        // Connect to the MongoDB client
-        await client.connect();
+        const [lat, lng] = coordinates; // [latitude, longitude]
         const database = client.db(dbName);
-        const traffic = database.collection('Traffic');
+        const trafficCollection = database.collection('Traffic');
 
-        // Fetch all traffic squares from the database
-        const rectangles = await traffic.find().toArray();
-
-        const [carLat, carLng] = carLocation;
-        let isCarInTraffic = false;
-
-        // Check if the car is within any of the rectangles
-        for (const rectangle of rectangles) {
-            const { minLatLng, maxLatLng } = rectangle;
-
-            // Parse the minLatLng and maxLatLng string into separate lat, lng values
-            const [minLat, minLng] = minLatLng.split(",").map(parseFloat);
-            const [maxLat, maxLng] = maxLatLng.split(",").map(parseFloat);
-
-            // Check if the car's location is within the bounds of the current rectangle
-            if (
-                carLat >= minLat && carLat <= maxLat && // Latitude range check
-                carLng >= minLng && carLng <= maxLng    // Longitude range check
-            ) {
-                isCarInTraffic = true;
-                break; // Exit the loop once a match is found
+        // Query using $geoIntersects to find if the car is inside any traffic rectangle
+        const result = await trafficCollection.findOne({
+            geometry: {
+                $geoIntersects: {
+                    $geometry: {
+                        type: "Point",
+                        coordinates: [lng, lat] // [longitude, latitude]
+                    }
+                }
             }
-        }
+        });
 
-        console.log(`Car is ${isCarInTraffic ? 'in' : 'not in'} traffic.`);
-        return isCarInTraffic;
+        // console.log(`Checking traffic for coordinates: (${lat}, ${lng})`);
+        // console.log("Traffic result:", result);
+
+        if(result){
+            // console.log("Traffic found");
+            return true;
+        }else{
+            // console.log("No traffic found");
+            return false;
+        }
     } catch (err) {
-        console.error("An error occurred while checking traffic:", err);
+        console.error("Error checking traffic:", err);
         return false;
     }
 }
 
-function isInTrafficZone([lat, lng], trafficZone) {
-    const { minLatLng, maxLatLng } = trafficZone;
-    const [minLat, minLng] = minLatLng.split(",").map(parseFloat);
-    const [maxLat, maxLng] = maxLatLng.split(",").map(parseFloat);
-
-    return (
-        lat >= minLat && lat <= maxLat && // Latitude check
-        lng >= minLng && lng <= maxLng    // Longitude check
-    );
-}
 
 async function rerouteCar(carId) {
     try {
         const database = client.db(dbName);
-        const carsCollection = database.collection('Autonomous Cars');
-        const trafficCollection = database.collection('Traffic');
+        const carsCollection = database.collection(randomName);
 
         const car = await carsCollection.findOne({ _id: new ObjectId(carId) });
         if (!car) {
@@ -148,9 +131,29 @@ async function rerouteCar(carId) {
 
         const [carLat, carLng] = car.currentLocation;
         const [destLat, destLng] = car.Destination;
+        const currentPolyline = car.polyline;
 
-        // Get current traffic data
-        const currentTraffic = await trafficCollection.find().toArray();
+        // Current route coordinates
+        const currentRouteCoords = decode(currentPolyline);
+        console.log('currentRoute', currentPolyline);
+
+
+        // Use Promise.all to handle all async calls concurrently
+        const currentTrafficChecks = currentRouteCoords.map(async (coord) => {
+            return await checkTraffic(coord); // true/false
+        });
+
+        // Wait for all traffic checks to complete
+        const currentTrafficResults = await Promise.all(currentTrafficChecks);
+
+        console.log('currentTrafficResults', currentTrafficResults);
+
+        // Count points in traffic
+        const currentPointsInTraffic = currentTrafficResults.filter(Boolean).length;
+
+        const currentTrafficPercentage = (currentPointsInTraffic / currentRouteCoords.length) * 100;
+        console.log(`Current route has ${currentPointsInTraffic} points in traffic`);
+        console.log(`Current traffic percentage: ${currentTrafficPercentage.toFixed(1)}%`);
 
         // Fetch alternative routes
         const routes = await fetchPolyline(
@@ -164,35 +167,41 @@ async function rerouteCar(carId) {
             return;
         }
 
-        // Analyze each route for traffic impact
-        const analyzedRoutes = routes.map(route => {
-            const decodedCoords = decode(route.polyline);
-            let pointsInTraffic = 0;
 
-            // Check each point in the route for traffic
-            decodedCoords.forEach(coord => {
-                if (currentTraffic.some(zone => isInTrafficZone(coord, zone))) {
-                    pointsInTraffic++;
-                }
+        // Analyze each route for traffic impact
+        const analyzedRoutes = await Promise.all(routes.map(async route => {
+            console.log('route polyline', route.polyline);
+            const decodedCoords = decode(route.polyline);
+            console.log('decodedCoords', decodedCoords);
+            const trafficChecks = decodedCoords.map(async (coord) => {
+                return await checkTraffic(coord); // true/false
             });
 
+            // Wait for all traffic checks to complete
+            const trafficResults = await Promise.all(trafficChecks);
+
+            // Count points in traffic
+            const pointsInTraffic = trafficResults.filter(Boolean).length;
+
+            console.log(`Route has ${pointsInTraffic} points in traffic`);
+
             const trafficPercentage = (pointsInTraffic / decodedCoords.length) * 100;
-            const durationPenalty = (route.duration - routes[0].duration) / routes[0].duration * 100;
+            console.log(`Traffic percentage: ${trafficPercentage.toFixed(1)}%`);
 
             return {
                 ...route,
                 decodedCoords,
                 trafficPercentage,
-                score: trafficPercentage + durationPenalty // Lower is better
+                score: trafficPercentage // Lower is better
             };
-        });
+        }));
 
         // Sort routes by score (lower is better)
         analyzedRoutes.sort((a, b) => a.score - b.score);
         const bestRoute = analyzedRoutes[0];
 
         // If best route is significantly better than current (more than 20% better score)
-        if (bestRoute && bestRoute.score < analyzedRoutes[1]?.score * 0.8) {
+        if (bestRoute && bestRoute.score < currentTrafficPercentage) {
             // Update the car's route and cache
             routeCache[carId] = {
                 coordinates: bestRoute.decodedCoords,
@@ -274,15 +283,33 @@ async function updateCarLocation() {
         let { coordinates, speed } = routeCache[carId];
         const { currentSegmentIndex, segmentDistanceCovered } = carState;
 
-        if (isInTraffic) {
-            console.log("before update"+carState.stuckInTrafficTime);
+        if(isInTraffic){
+            await carsCollection.updateOne(
+                { _id: car._id },
+                {
+                    $set: { // Use `$set` to update fields
+                        isInTraffic: true
+                    }
+                }
+            );
+        }else{
+            await carsCollection.updateOne(
+                { _id: car._id },
+                {
+                    $set: { // Use `$set` to update fields
+                        isInTraffic: false
+                    }
+                }
+            );
+        }
+
+        if (isInTraffic && car.status === "ride") {
+            console.log(carState.stuckInTrafficTime);
             carState.stuckInTrafficTime += 1; // Increment time in traffic
-            console.log("after update"+carState.stuckInTrafficTime);
 
             console.log(`Car ${carId} is in traffic. Waiting...`);
-            speed = speed / 4; // Reduce speed by half when in traffic
+            speed = speed / 10; // Reduce speed by half when in traffic
         }else{
-            console.log("not in traffic resting"+carState.stuckInTrafficTime);
             carState.stuckInTrafficTime = 0; // Reset the time in traffic
         }
 
@@ -290,11 +317,18 @@ async function updateCarLocation() {
         if (carState.stuckInTrafficTime >= 120) {
             console.log(`Car ${carId} has been stuck in traffic for too long. Rerouting...`);
             const reroute = await rerouteCar(carId);
-            // If found a better route, skip further updates for this car in the current loop
+
             if (reroute) {
-                continue; // Skip further updates for this car in the current loop
-            }else{
-                carState.stuckInTrafficTime = 0; // Reset the time in traffic
+                // If rerouted successfully, update the routeCache, reset traffic time, and adjust state
+
+                carStates.set(carId, {
+                    currentSegmentIndex: 0, // Reset to the start of the new route
+                    segmentDistanceCovered: 0, // Reset covered distance
+                    stuckInTrafficTime: 0 // Reset traffic time
+                });
+
+                console.log(`Car ${carId} rerouted successfully. Continuing with the new route.`);
+                continue; // Skip further processing for this car in the current iteration
             }
         }
         // Current and next coordinates

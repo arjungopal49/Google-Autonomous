@@ -54,6 +54,7 @@ async function createCollection() {
                 status: "free",
                 polyline: "",
                 speed: 0,
+                isInTraffic: false,
             };
         });
 
