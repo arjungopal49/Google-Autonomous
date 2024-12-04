@@ -112,6 +112,14 @@ function App() {
     setShowSafetyFeatures(true); // Show safety features card
   };
 
+  const handleStopRide = async () => {
+    const response = await fetch(
+      `http://127.0.0.1:5000/free-car?id=${vehicle['_id']}`,
+      { method: 'POST' }
+    );
+    console.log(await response.json());
+  };
+
   return (
     <Router>
       <div className="App">
@@ -153,7 +161,7 @@ function App() {
 
                   {showPopup && <Popup message="Your vehicle has arrived!" />}
 
-                  {showSafetyFeatures && <SafetyFeatures />}
+                  {showSafetyFeatures && <SafetyFeatures handleStopRide={handleStopRide} />}
                 </div>
               </div>
             }

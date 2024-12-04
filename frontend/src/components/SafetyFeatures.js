@@ -9,7 +9,7 @@ import ReportProblemIcon from '@mui/icons-material/ReportProblem';
 import PhoneIcon from '@mui/icons-material/Phone';
 import StopCircleIcon from '@mui/icons-material/PanTool';
 
-const SafetyFeatures = () => {
+const SafetyFeatures = ({handleStopRide}) => {
   return (
     <Box
       className="safety-features-card"  
@@ -60,6 +60,7 @@ const SafetyFeatures = () => {
             </Button>
           </Box>
           <Button
+            onClick={handleStopRide}
             variant="contained"
             startIcon={<StopCircleIcon />}
             sx={{
