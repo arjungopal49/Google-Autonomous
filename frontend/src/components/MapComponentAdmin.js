@@ -101,14 +101,13 @@ const MapComponentAdmin = ({ encodedPolyline, carLocation, carDest, allCars, all
       // Show all traffic boxes
       if (allTraffic) {
         allTraffic.forEach(traffic => {
-          const [minLat, minLng] = traffic.minLatLng.split(',').map(coord => parseFloat(coord.trim()));
-          const [maxLat, maxLng] = traffic.maxLatLng.split(',').map(coord => parseFloat(coord.trim()));
+          const coordinates = traffic.geometry.coordinates[0];
           const trafficBox = new window.google.maps.Rectangle({
             bounds: {
-              north: maxLat,
-              south: minLat,
-              east: maxLng,
-              west: minLng,
+              north: parseFloat(coordinates[2][1]),
+              south: parseFloat(coordinates[0][1]),
+              east: parseFloat(coordinates[2][0]),
+              west: parseFloat(coordinates[0][0]),
             },
             map: mapRef.current,
             fillColor: 'rgba(255, 0, 0, 0.4)',
