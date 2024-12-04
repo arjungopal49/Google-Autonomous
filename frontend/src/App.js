@@ -40,6 +40,7 @@ function App() {
         setCarLocation(null);
         setEncodedPolyline(null);
         setVehicle(null);
+        setShowSafetyFeatures(false);
       } else {
         setVehicle(progress.car);
         setCarLocation(progress.car.currentLocation);
