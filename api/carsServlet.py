@@ -24,7 +24,26 @@ def request_car():
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
+# abstract function for choose a car
+# def choose_car(origin, destination):
+#     try:
+#         server_url = "http://localhost:4000/choose-car"
 
+#         body = {
+#             "orgin": origin,
+#             "destination": destination,
+#             "type": "address"
+#         }
+
+#         # Make the request to the Express server
+#         response = requests.get(server_url)
+#         # Check if the request was successful
+#         if response.status_code == 200:
+#             print("Choose Car Successfully")
+#         else:
+#             return jsonify({'error': 'Failed to choose a car'}), 500
+#     except Exception as e:
+#         return jsonify({'error': str(e)}), 500
 
 def update_car(carId, x, y, status, locType):
     # Making a POST request to the /request-car endpoint of the server.mjs
