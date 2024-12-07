@@ -141,7 +141,6 @@ export async function freeUpCar(carId) {
                 Destination: [null, null],
                 speed: 0,
                 polyline: null
-
             },
         };
 
@@ -268,6 +267,43 @@ export async function getAllTraffic() {
         const traffic = database.collection('Traffic');
         const allTraffic= await traffic.find({}).toArray();
         return allTraffic;
+    } catch (err) {
+        console.error("An error occurred:", err);
+    }
+}
+
+export async function setAllInTrafficStatus() {
+    try {
+        await connectClient();
+        const database = client.db(dbName);
+        const carsCollection = database.collection(randomName);
+        const trafficCollection = database.collection('Traffic');
+
+        const allCars = await carsCollection.find({}).toArray();
+
+        // Use Promise.all to execute updates concurrently for better performance
+        await Promise.all(allCars.map(async (car) => {
+            const [lat, lng] = car.currentLocation;
+
+            // Check if the car is within traffic
+            const result = await trafficCollection.findOne({
+                geometry: {
+                    $geoIntersects: {
+                        $geometry: {
+                            type: "Point",
+                            coordinates: [lng, lat]
+                        }
+                    }
+                }
+            });
+
+            // Update the car's traffic status
+            await carsCollection.updateOne(
+                { _id: car._id },
+                { $set: { isInTraffic: !!result } } // `!!result` converts result to a boolean
+            );
+        }));
+        
     } catch (err) {
         console.error("An error occurred:", err);
     }

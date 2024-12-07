@@ -1,5 +1,5 @@
 import express from "./node_modules/express/index.js";
-import {setSpeed, freeUpCar, generateTraffic, getAllCars, query, removeTraffic, updateCar, getAllTraffic} from "./Database.mjs";
+import {setSpeed, freeUpCar, generateTraffic, getAllCars, query, removeTraffic, updateCar, getAllTraffic, setAllInTrafficStatus} from "./Database.mjs";
 import cors from "cors"; // Import the CORS package
 
 const app = express();
@@ -125,3 +125,12 @@ app.get('/all-traffic', async (req, res) => {
   }
 });
 
+//Endpoint to set the in traffic status of all cars based on their locations
+app.post('/set-in-traffic-status', async (req, res) => {
+  try {
+    const result = await setAllInTrafficStatus();
+      res.status(200).send();// Send 200 status code if done successfully
+  } catch (error) {
+    res.status(500).json({ error: "Error while setting in traffic variable." });
+  }
+});

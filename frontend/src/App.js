@@ -7,6 +7,7 @@ import AssignedVehicle from './components/AssignedVehicle';
 import Popup from './components/Popup';
 import SafetyFeatures from './components/SafetyFeatures';
 import AdminDashboard from './components/AdminDashboard'; // Import AdminDashboard component
+import CarReassigned from './components/CarReassigned';
 import { BrowserRouter as Router, Route, Routes } from 'react-router-dom'; // Import React Router
 
 function App() {
@@ -20,6 +21,7 @@ function App() {
   const [allCars, setAllCars] = useState([]);
   const [showPopup, setShowPopup] = useState(false);
   const [showSafetyFeatures, setShowSafetyFeatures] = useState(false); // New state for safety features card
+  const [showCarReassigned, setShowCarReassigned] = useState(false);
 
   useEffect(() => {
     async function getAllCars() {
@@ -41,12 +43,19 @@ function App() {
         setEncodedPolyline(null);
         setVehicle(null);
         setShowSafetyFeatures(false);
+        setShowCarReassigned(false);
+        setShowPopup(false); 
       } else {
+        if (progress.alert === 'reassign') {
+          console.log("car reassigned");
+          setShowCarReassigned(true);
+        }
         setVehicle(progress.car);
         setCarLocation(progress.car.currentLocation);
         setArrivalTime(progress['remaining-time']);
         setCarDest(progress.car.Destination);
         if (progress.car.status === 'waiting') {
+          setShowCarReassigned(false);
           setEncodedPolyline(null);
           setShowPopup(true); // Show popup when the car arrives
         } else {
@@ -160,6 +169,8 @@ function App() {
                   )}
 
                   {showPopup && <Popup message="Your vehicle has arrived!" />}
+
+                  {showCarReassigned && <CarReassigned/>}
 
                   {showSafetyFeatures && <SafetyFeatures handleStopRide={handleStopRide} />}
                 </div>

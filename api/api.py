@@ -87,9 +87,13 @@ def get_closest_car(origin, destination, type):
     free_cars = carsServlet.request_car()
     if len(free_cars) == 0:
         return None, "no available cars"
+    
+    selected_cars = [car for car in free_cars if not car["isInTraffic"]]
+    if len(selected_cars) == 0:
+        selected_cars = free_cars
 
     carLocations = []
-    for car in free_cars:
+    for car in selected_cars:
         carX = float(car["currentLocation"][0])
         carY = float(car["currentLocation"][1])
         carLocations.append([carX, carY])
@@ -97,14 +101,15 @@ def get_closest_car(origin, destination, type):
     results = mapsServlet.getRouteMatrix(carLocations, pickupLocation)
     closestCarIndex = min(results, key=lambda x: int(x['duration'].strip('s')))['carIndex']
 
-    carsServlet.update_car(free_cars[closestCarIndex]["_id"], originX, originY, "toUser", "destination")
+    carsServlet.update_car(selected_cars[closestCarIndex]["_id"], originX, originY, "toUser", "destination")
 
     arrivalTime = mapsServlet.get_travel_time(
-        str(free_cars[closestCarIndex]["currentLocation"]).replace(" ", "").replace("'", "")[1:-1], origin)
+        str(selected_cars[closestCarIndex]["currentLocation"]).replace(" ", "").replace("'", "")[1:-1], origin)
     polyline = mapsServlet.get_route(
-        str(free_cars[closestCarIndex]["currentLocation"]).replace(" ", "").replace("'", "")[1:-1], origin)
-
-    return {'car': free_cars[closestCarIndex], 'arrival-time': arrivalTime, 'route': polyline}, None
+        str(selected_cars[closestCarIndex]["currentLocation"]).replace(" ", "").replace("'", "")[1:-1], origin)
+    
+    selected_cars[closestCarIndex]["status"] = "toUser"
+    return {'car': selected_cars[closestCarIndex], 'arrival-time': arrivalTime, 'route': polyline}, None
 
 # params:
 # origin - current location/pick up location for the user
@@ -121,6 +126,7 @@ def choose_car():
     destination = request.args.get('destination')
     dType = request.args.get('type')
     response, error = get_closest_car(origin, destination, dType)
+    carsServlet.set_in_traffic_status()
     if error:
         return jsonify(error)
     return jsonify(response)
@@ -175,22 +181,22 @@ def trackProgress():
         return jsonify({"error": "Car not found"}), 404
     
     # if the car is in traffic, choose another car
-    if car["isInTraffic"] == "true":
-        ## call choose car endpoint with the same origin and destination
-        origin = car.get("pickupLocation", "")
-        destination = car.get("destination", "")
-        dType = "address"
-        response, error = get_closest_car(origin, destination, dType)
+    if car["isInTraffic"] and car["status"] == "toUser":
+        carsServlet.freeUp_Car(car["_id"])
+        carsServlet.set_in_traffic_status()
+        origin = ','.join(map(str, car["Destination"]))
+        dType = "coordinates"
+        response, error = get_closest_car(origin, origin, dType)
         if error:
             return jsonify({"error": error})
-        return jsonify(response)
+        return jsonify({'alert': "reassign", 'car': response['car'], 'remaining-time': response['arrival-time'], 'remaining-route': response['route']})
 
     carCurrLoc = str(car["currentLocation"]).replace(" ", "").replace("'","")[1:-1]
     carDest = str(car["Destination"]).replace(" ", "").replace("'","")[1:-1]
     if car["status"] == "waiting" or car["status"] == "free":
         return jsonify({'car': car, 'remaining-time': "0", 'remaining-route': ""})
     remainingTime = mapsServlet.get_travel_time(carCurrLoc, carDest)
-    return jsonify({'car': car, 'remaining-time': remainingTime, 'remaining-route': car["polyline"]})
+    return jsonify({'alert': "none", 'car': car, 'remaining-time': remainingTime, 'remaining-route': car["polyline"]})
 
 
 @app.route('/start-ride', methods=['POST'])
