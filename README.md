@@ -1,5 +1,18 @@
 # Google-Autonomous
 
+This project is a multi-ride sharing application designed for autonomous vehicles. The application allows users to book rides, where the most optimal autonomous car is dynamically assigned to fulfill their request.
+
+The app includes a robust admin dashboard for managing vehicles and enhancing the simulation environment. Key features of the dashboard include:
+
+- Releasing cars that are currently in use.
+- Adjusting simulation parameters, such as increasing simulation speed and adding traffic to the map.
+- Configuring the update frequency for car locations on the map.
+- Moving cars to specific locations by entering precise coordinates.
+
+The application ensures optimal routing by dynamically rerouting cars if they encounter admin-generated traffic or unexpected congestion. This guarantees minimal delays and a smooth user experience.
+
+By combining real-time simulations, intelligent car allocation, and traffic management, the app provides a seamless and efficient autonomous ride-sharing experience.
+
 ## Setup
 
 ### Windows Devices
